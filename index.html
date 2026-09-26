@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美股技術面與量能篩選器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .badge-divergence-bottom { background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
+        .badge-divergence-top { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .badge-none { background-color: #f3f4f6; color: #6b7280; }
+        .highlight-vol { background-color: #fef3c7; color: #d97706; font-weight: bold; }
+        .sort-icon { font-size: 0.75rem; margin-left: 0.25rem; color: #9ca3af; }
+        .sort-active { color: #2563eb; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 bg-white p-4 rounded-xl shadow-sm">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-blue-600"></i> 美股技術面與爆量篩選器
+                </h1>
+                <p class="text-sm text-gray-500 mt-1">追蹤 MACD DIF 背離型態 (週/月) 與日線量能爆發條件</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>策略條件：日換手率較昨日 ≥20% 且 日成交量較昨日 ≥2倍</span>
+            </div>
+        </header>
+
+        <!-- 篩選與工具列 -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+            <div class="flex flex-wrap gap-3 items-center w-full lg:w-auto">
+                <!-- 關鍵字搜尋 -->
+                <div class="relative min-w-[200px]">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="搜尋代號 / 公司名稱..." 
+                        class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+
+                <!-- 背離型態篩選 -->
+                <select id="divergenceFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="ALL">所有背離型態</option>
+                    <option value="WEEK_BOTTOM">週線：底背離 (看漲)</option>
+                    <option value="MONTH_BOTTOM">月線：底背離 (看漲)</option>
+                    <option value="BOTH_BOTTOM">週+月：雙重底背離</option>
+                    <option value="ANY_TOP">包含頂背離 (看跌)</option>
+                </select>
+
+                <!-- 僅顯示符合量能暴增標的 -->
+                <label class="inline-flex items-center cursor-pointer text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-lg border hover:bg-gray-200 transition">
+                    <input type="checkbox" id="volumeFilter" class="sr-only peer">
+                    <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 relative"></div>
+                    <span class="ml-2">僅看符合「量能爆發」標的</span>
+                </label>
+            </div>
+
+            <div class="text-xs text-gray-500 flex items-center gap-1 self-end lg:self-center">
+                顯示 <span id="recordCount" class="font-bold text-gray-800">0</span> / <span id="totalCount">0</span> 筆資料
+            </div>
+        </div>
+
+        <!-- 股票資料表格 -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200 select-none">
+                        <tr>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('ticker')">
+                                代號 <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('price')">
+                                現價 (USD) <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
+                            <th class="py-3 px-4 text-center">週線 MACD 背離</th>
+                            <th class="py-3 px-4 text-center">月線 MACD 背離</th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('turnoverDiff')">
+                                日換手率 (較昨日) <i id="sort-turnoverDiff" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volumeRatio')">
+                                日成交量 (較昨日倍數) <i id="sort-volumeRatio" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
+                            <th class="py-3 px-4 text-center">策略符合度</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-gray-200 text-gray-700">
+                        <!-- 資料由 JavaScript 動態生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模擬符合美股測試條件的股票資料
+        const stockData = [
+            { ticker: "NVDA", name: "NVIDIA Corp", price: 142.80, weekDiv: "底背離", monthDiv: "無", turnover: "3.45%", turnoverDiff: 28.5, volumeRatio: 2.4, matchStrategy: true },
+            { ticker: "TSLA", name: "Tesla Inc", price: 248.50, weekDiv: "底背離", monthDiv: "底背離", turnover: "5.12%", turnoverDiff: 42.1, volumeRatio: 3.1, matchStrategy: true },
+            { ticker: "AMD", name: "Advanced Micro Devices", price: 156.20, weekDiv: "無", monthDiv: "底背離", turnover: "2.10%", turnoverDiff: 22.0, volumeRatio: 2.1, matchStrategy: true },
+            { ticker: "AAPL", name: "Apple Inc", price: 232.10, weekDiv: "頂背離", monthDiv: "無", turnover: "1.05%", turnoverDiff: 5.2, volumeRatio: 1.1, matchStrategy: false },
+            { ticker: "PLTR", name: "Palantir Technologies", price: 43.60, weekDiv: "底背離", monthDiv: "無", turnover: "6.80%", turnoverDiff: 35.0, volumeRatio: 2.8, matchStrategy: true },
+            { ticker: "MSFT", name: "Microsoft Corp", price: 425.30, weekDiv: "無", monthDiv: "無", turnover: "0.85%", turnoverDiff: -12.0, volumeRatio: 0.8, matchStrategy: false },
+            { ticker: "AMZN", name: "Amazon.com Inc", price: 186.40, weekDiv: "底背離", monthDiv: "無", turnover: "1.90%", turnoverDiff: 15.0, volumeRatio: 1.7, matchStrategy: false },
+            { ticker: "META", name: "Meta Platforms", price: 582.90, weekDiv: "無", monthDiv: "底背離", turnover: "1.45%", turnoverDiff: 25.4, volumeRatio: 2.3, matchStrategy: true },
+            { ticker: "SMCI", name: "Super Micro Computer", price: 48.20, weekDiv: "頂背離", monthDiv: "頂背離", turnover: "12.30%", turnoverDiff: 65.0, volumeRatio: 4.2, matchStrategy: false }
+        ];
+
+        let currentData = [...stockData];
+        let currentSortColumn = '';
+        let isAscending = true;
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            data.forEach(stock => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+
+                const weekBadge = getDivergenceBadge(stock.weekDiv);
+                const monthBadge = getDivergenceBadge(stock.monthDiv);
+
+                const turnoverClass = stock.turnoverDiff >= 20 ? "text-green-600 font-bold" : "text-gray-600";
+                const volumeClass = stock.volumeRatio >= 2.0 ? "text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 inline-block" : "text-gray-600";
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-gray-900">${stock.ticker}</div>
+                        <div class="text-xs text-gray-400">${stock.name}</div>
+                    </td>
+                    <td class="py-3 px-4 text-right font-medium">$${stock.price.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center">${weekBadge}</td>
+                    <td class="py-3 px-4 text-center">${monthBadge}</td>
+                    <td class="py-3 px-4 text-right">
+                        <div>${stock.turnover}</div>
+                        <div class="text-xs ${turnoverClass}">較昨日 ${stock.turnoverDiff >= 0 ? '+' : ''}${stock.turnoverDiff.toFixed(1)}%</div>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <span class="${volumeClass}">${stock.volumeRatio.toFixed(1)} 倍</span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        ${stock.matchStrategy ? 
+                            '<span class="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i> 符合完全條件</span>' : 
+                            '<span class="text-xs text-gray-400">未完全符合</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('recordCount').innerText = data.length;
+            document.getElementById('totalCount').innerText = stockData.length;
+        }
+
+        function getDivergenceBadge(type) {
+            if (type === "底背離") return `<span class="badge-divergence-bottom px-2.5 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-arrow-trend-up mr-1"></i>底背離</span>`;
+            if (type === "頂背離") return `<span class="badge-divergence-top px-2.5 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-arrow-trend-down mr-1"></i>頂背離</span>`;
+            return `<span class="badge-none px-2.5 py-0.5 rounded text-xs">無背離</span>`;
+        }
+
+        function filterData() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const divFilter = document.getElementById('divergenceFilter').value;
+            const volOnly = document.getElementById('volumeFilter').checked;
+
+            currentData = stockData.filter(stock => {
+                const matchSearch = stock.ticker.toLowerCase().includes(search) || stock.name.toLowerCase().includes(search);
+                
+                let matchDiv = true;
+                if (divFilter === "WEEK_BOTTOM") matchDiv = stock.weekDiv === "底背離";
+                else if (divFilter === "MONTH_BOTTOM") matchDiv = stock.monthDiv === "底背離";
+                else if (divFilter === "BOTH_BOTTOM") matchDiv = stock.weekDiv === "底背離" && stock.monthDiv === "底背離";
+                else if (divFilter === "ANY_TOP") matchDiv = stock.weekDiv === "頂背離" || stock.monthDiv === "頂背離";
+
+                let matchVol = true;
+                if (volOnly) {
+                    matchVol = stock.turnoverDiff >= 20 && stock.volumeRatio >= 2.0;
+                }
+
+                return matchSearch && matchDiv && matchVol;
+            });
+
+            renderTable(currentData);
+        }
+
+        function sortTable(column) {
+            if (currentSortColumn === column) {
+                isAscending = !isAscending;
+            } else {
+                currentSortColumn = column;
+                isAscending = true;
+            }
+
+            currentData.sort((a, b) => {
+                let valA = a[column];
+                let valB = b[column];
+
+                if (typeof valA === 'string') {
+                    return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return isAscending ? valA - valB : valB - valA;
+            });
+
+            renderTable(currentData);
+        }
+
+        document.getElementById('searchInput').addEventListener('input', filterData);
+        document.getElementById('divergenceFilter').addEventListener('change', filterData);
+        document.getElementById('volumeFilter').addEventListener('change', filterData);
+
+        // 初始化
+        renderTable(stockData);
+    </script>
+</body>
+</html>
