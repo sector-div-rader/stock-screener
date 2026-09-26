@@ -7,33 +7,37 @@ import requests
 import io
 from datetime import datetime
 
-# 1. 自動動態取得全美股（NYSE, NASDAQ, AMEX）上市普通股清單
+# 1. 從 NASDAQ 官方 FTP 伺服器自動獲取 100% 完整的全美股上市股票清單 (最穩定，不需 API Key)
 def get_us_stock_list():
-    print("正在獲取全美股上市股票清單...")
+    print("正在從官方 FTP 獲取全美股上市股票清單...")
     tickers = set()
     
-    # 來源 A: 從 NASDAQ 官方 API 獲取上市股票列表
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-        }
-        url = "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=25000&exchange=NASDAQ,NYSE,AMEX"
-        res = requests.get(url, headers=headers, timeout=15)
-        if res.status_code == 200:
-            data = res.json()
-            rows = data.get('data', {}).get('table', {}).get('rows', [])
-            for row in rows:
-                symbol = row.get('symbol', '')
-                # 過濾含有特殊符號(權證/特別股)、無效字元的代號
-                if symbol and '^' not in symbol and '/' not in symbol and '.' not in symbol and len(symbol) <= 5:
-                    tickers.add(symbol)
-            print(f"成功從 NASDAQ 取得 {len(tickers)} 隻股票代號。")
+        # 下載 NASDAQ 上市股票
+        nasdaq_url = "ftp://ftp.nasdaqtrader.com/SymbolDirectory/nasdaqlisted.txt"
+        df_nasdaq = pd.read_csv(nasdaq_url, sep="|")
+        
+        # 下載 NYSE / AMEX 等其他交易所上市股票
+        other_url = "ftp://ftp.nasdaqtrader.com/SymbolDirectory/otherlisted.txt"
+        df_other = pd.read_csv(other_url, sep="|")
+        
+        # 提取代碼
+        nasdaq_symbols = df_nasdaq['Symbol'].dropna().tolist()
+        other_symbols = df_other['ACT Symbol'].dropna().tolist()
+        
+        all_symbols = nasdaq_symbols + other_symbols
+        
+        for symbol in all_symbols:
+            symbol = str(symbol).strip()
+            # 過濾無效符號、權證、特別股與測試代號 (例如帶有 $、.、~、File Creation Time 等)
+            if (symbol and len(symbol) <= 5 and symbol.isalpha() 
+                and not symbol.startswith('File') 
+                and not symbol.startswith('Total')):
+                tickers.add(symbol)
+                
+        print(f"✅ 成功獲取 {len(tickers)} 隻全美股上市公司代號。")
     except Exception as e:
-        print(f"從 NASDAQ API 獲取失敗: {e}")
-
-    # 備用來源 B: 如果 API 失敗，載入美股核心龍頭與熱門標的備用清單
-    if len(tickers) < 100:
-        print("使用備用美股清單...")
+        print(f"❌ 官方 FTP 獲取失敗: {e}，切換至備用清單...")
         fallback = [
             "NVDA", "TSLA", "AMD", "AAPL", "PLTR", "MSFT", "AMZN", "META", "SMCI", 
             "GOOGL", "INTC", "NFLX", "AVGO", "COST", "QCOM", "TXN", "SHOP", "LLY",
@@ -75,8 +79,8 @@ def process_stocks():
     count = 0
     for ticker in tickers:
         count += 1
-        if count % 100 == 0 or count == total:
-            print(f"進度: [{count}/{total}] (已完成 {round(count/total*100, 1)}%)")
+        if count % 200 == 0 or count == total:
+            print(f"掃描進度: [{count}/{total}] (已完成 {round(count/total*100, 1)}%)")
 
         try:
             stock = yf.Ticker(ticker)
@@ -88,7 +92,7 @@ def process_stocks():
             vol_today = float(df_day['Volume'].iloc[-1])
             vol_yesterday = float(df_day['Volume'].iloc[-2])
             
-            # 過濾成交量過低（成交不活躍）的仙股，提升掃描效率與資料品質
+            # 過濾成交量過低 (日成交量 < 50,000) 的冷門股/殭屍股，提升速度與資料品質
             if vol_today < 50000:
                 continue
 
@@ -104,10 +108,10 @@ def process_stocks():
             
             price = round(float(df_day['Close'].iloc[-1]), 2)
             
-            # 判斷是否符合全部條件
+            # 強制轉換為 Python 原生 bool，防止 JSON dump 報錯
             match_strategy = bool((turnover_diff >= 20.0) and (vol_ratio >= 2.0) and (week_div == "底背離" or month_div == "底背離"))
             
-            # 若符合任一背離或爆量條件才寫入，大幅減少數據檔案體積
+            # 只要符合策略或有背離/爆量特徵就寫入
             if match_strategy or week_div != "無" or month_div != "無" or (turnover_diff >= 20.0 and vol_ratio >= 2.0):
                 results.append({
                     "ticker": ticker,
@@ -120,8 +124,8 @@ def process_stocks():
                     "volumeRatio": vol_ratio,
                     "matchStrategy": match_strategy
                 })
-        except Exception as e:
-            # 忽略個別資料抓取失敗的股票，繼續執行
+        except Exception:
+            # 個別股票查詢失敗時自動跳過，保持程式穩定執行
             continue
             
     print(f"✅ 全美股掃描完成！共篩選出 {len(results)} 隻符合條件/特徵的標的。")
