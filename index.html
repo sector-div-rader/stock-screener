@@ -10,13 +10,12 @@
         .badge-divergence-bottom { background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
         .badge-divergence-top { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
         .badge-none { background-color: #f3f4f6; color: #6b7280; }
-        .highlight-vol { background-color: #fef3c7; color: #d97706; font-weight: bold; }
         .sort-icon { font-size: 0.75rem; margin-left: 0.25rem; color: #9ca3af; }
-        .sort-active { color: #2563eb; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-6">
+        <!-- 頁頭資訊 -->
         <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 bg-white p-4 rounded-xl shadow-sm">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -86,7 +85,11 @@
                         </tr>
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-gray-200 text-gray-700">
-                        <!-- 資料由 JavaScript 動態生成 -->
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-gray-400">
+                                <i class="fa-solid fa-spinner fa-spin mr-2"></i>正在載入最新數據...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -94,26 +97,48 @@
     </div>
 
     <script>
-        // 模擬符合美股測試條件的股票資料
-        const stockData = [
-            { ticker: "NVDA", name: "NVIDIA Corp", price: 142.80, weekDiv: "底背離", monthDiv: "無", turnover: "3.45%", turnoverDiff: 28.5, volumeRatio: 2.4, matchStrategy: true },
-            { ticker: "TSLA", name: "Tesla Inc", price: 248.50, weekDiv: "底背離", monthDiv: "底背離", turnover: "5.12%", turnoverDiff: 42.1, volumeRatio: 3.1, matchStrategy: true },
-            { ticker: "AMD", name: "Advanced Micro Devices", price: 156.20, weekDiv: "無", monthDiv: "底背離", turnover: "2.10%", turnoverDiff: 22.0, volumeRatio: 2.1, matchStrategy: true },
-            { ticker: "AAPL", name: "Apple Inc", price: 232.10, weekDiv: "頂背離", monthDiv: "無", turnover: "1.05%", turnoverDiff: 5.2, volumeRatio: 1.1, matchStrategy: false },
-            { ticker: "PLTR", name: "Palantir Technologies", price: 43.60, weekDiv: "底背離", monthDiv: "無", turnover: "6.80%", turnoverDiff: 35.0, volumeRatio: 2.8, matchStrategy: true },
-            { ticker: "MSFT", name: "Microsoft Corp", price: 425.30, weekDiv: "無", monthDiv: "無", turnover: "0.85%", turnoverDiff: -12.0, volumeRatio: 0.8, matchStrategy: false },
-            { ticker: "AMZN", name: "Amazon.com Inc", price: 186.40, weekDiv: "底背離", monthDiv: "無", turnover: "1.90%", turnoverDiff: 15.0, volumeRatio: 1.7, matchStrategy: false },
-            { ticker: "META", name: "Meta Platforms", price: 582.90, weekDiv: "無", monthDiv: "底背離", turnover: "1.45%", turnoverDiff: 25.4, volumeRatio: 2.3, matchStrategy: true },
-            { ticker: "SMCI", name: "Super Micro Computer", price: 48.20, weekDiv: "頂背離", monthDiv: "頂背離", turnover: "12.30%", turnoverDiff: 65.0, volumeRatio: 4.2, matchStrategy: false }
-        ];
-
-        let currentData = [...stockData];
+        let stockData = [];
+        let currentData = [];
         let currentSortColumn = '';
         let isAscending = true;
+
+        // 核心：從 Python 產出的 stocks_data.json 自動載入數據
+        async function loadStockData() {
+            try {
+                const response = await fetch('./stocks_data.json?t=' + new Date().getTime());
+                if (response.ok) {
+                    stockData = await response.json();
+                    currentData = [...stockData];
+                    renderTable(currentData);
+                } else {
+                    showErrorMessage("找不到 stocks_data.json 檔案，請確認 Python 腳本是否已執行產出數據。");
+                }
+            } catch (error) {
+                console.error("載入失敗:", error);
+                showErrorMessage("載入數據失敗，請確認 stocks_data.json 是否已生成。");
+            }
+        }
+
+        function showErrorMessage(msg) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-8 text-center text-red-500 font-medium">
+                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>${msg}
+                    </td>
+                </tr>`;
+        }
 
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-400">沒有符合條件的股票標的</td></tr>`;
+                document.getElementById('recordCount').innerText = 0;
+                document.getElementById('totalCount').innerText = stockData.length;
+                return;
+            }
 
             data.forEach(stock => {
                 const tr = document.createElement('tr');
@@ -128,17 +153,17 @@
                 tr.innerHTML = `
                     <td class="py-3 px-4">
                         <div class="font-bold text-gray-900">${stock.ticker}</div>
-                        <div class="text-xs text-gray-400">${stock.name}</div>
+                        <div class="text-xs text-gray-400">${stock.name || stock.ticker}</div>
                     </td>
-                    <td class="py-3 px-4 text-right font-medium">$${stock.price.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-right font-medium">$${Number(stock.price).toFixed(2)}</td>
                     <td class="py-3 px-4 text-center">${weekBadge}</td>
                     <td class="py-3 px-4 text-center">${monthBadge}</td>
                     <td class="py-3 px-4 text-right">
                         <div>${stock.turnover}</div>
-                        <div class="text-xs ${turnoverClass}">較昨日 ${stock.turnoverDiff >= 0 ? '+' : ''}${stock.turnoverDiff.toFixed(1)}%</div>
+                        <div class="text-xs ${turnoverClass}">較昨日 ${stock.turnoverDiff >= 0 ? '+' : ''}${Number(stock.turnoverDiff).toFixed(1)}%</div>
                     </td>
                     <td class="py-3 px-4 text-right">
-                        <span class="${volumeClass}">${stock.volumeRatio.toFixed(1)} 倍</span>
+                        <span class="${volumeClass}">${Number(stock.volumeRatio).toFixed(1)} 倍</span>
                     </td>
                     <td class="py-3 px-4 text-center">
                         ${stock.matchStrategy ? 
@@ -165,7 +190,7 @@
             const volOnly = document.getElementById('volumeFilter').checked;
 
             currentData = stockData.filter(stock => {
-                const matchSearch = stock.ticker.toLowerCase().includes(search) || stock.name.toLowerCase().includes(search);
+                const matchSearch = stock.ticker.toLowerCase().includes(search) || (stock.name && stock.name.toLowerCase().includes(search));
                 
                 let matchDiv = true;
                 if (divFilter === "WEEK_BOTTOM") matchDiv = stock.weekDiv === "底背離";
@@ -209,8 +234,8 @@
         document.getElementById('divergenceFilter').addEventListener('change', filterData);
         document.getElementById('volumeFilter').addEventListener('change', filterData);
 
-        // 初始化
-        renderTable(stockData);
+        // 頁面開啟時觸發載入
+        loadStockData();
     </script>
 </body>
 </html>
