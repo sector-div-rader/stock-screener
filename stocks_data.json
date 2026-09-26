@@ -1,24 +1,13 @@
 [
   {
-    "ticker": "NVDA",
-    "name": "NVDA",
-    "price": 225.07,
-    "weekDiv": "無",
-    "monthDiv": "頂背離",
-    "turnover": "89.81M",
-    "turnoverDiff": 15.9,
-    "volumeRatio": 1.16,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "TSLA",
-    "name": "TSLA",
-    "price": 372.11,
-    "weekDiv": "無",
+    "ticker": "AAPL",
+    "name": "AAPL",
+    "price": 341.07,
+    "weekDiv": "頂背離",
     "monthDiv": "無",
-    "turnover": "45.93M",
-    "turnoverDiff": 75.5,
-    "volumeRatio": 1.76,
+    "turnover": "29.95M",
+    "turnoverDiff": 21.1,
+    "volumeRatio": 1.21,
     "matchStrategy": false
   },
   {
@@ -33,28 +22,6 @@
     "matchStrategy": false
   },
   {
-    "ticker": "AAPL",
-    "name": "AAPL",
-    "price": 341.07,
-    "weekDiv": "頂背離",
-    "monthDiv": "無",
-    "turnover": "29.95M",
-    "turnoverDiff": 21.1,
-    "volumeRatio": 1.21,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "PLTR",
-    "name": "PLTR",
-    "price": 189.67,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "17.78M",
-    "turnoverDiff": -21.6,
-    "volumeRatio": 0.78,
-    "matchStrategy": false
-  },
-  {
     "ticker": "MSFT",
     "name": "MSFT",
     "price": 516.17,
@@ -66,135 +33,25 @@
     "matchStrategy": false
   },
   {
-    "ticker": "AMZN",
-    "name": "AMZN",
-    "price": 249.67,
+    "ticker": "NIO",
+    "name": "NIO",
+    "price": 3.58,
     "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "34.22M",
-    "turnoverDiff": 3.6,
-    "volumeRatio": 1.04,
+    "monthDiv": "底背離",
+    "turnover": "25.38M",
+    "turnoverDiff": -13.5,
+    "volumeRatio": 0.87,
     "matchStrategy": false
   },
   {
-    "ticker": "META",
-    "name": "META",
-    "price": 751.66,
+    "ticker": "NVDA",
+    "name": "NVDA",
+    "price": 225.07,
     "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "25.75M",
-    "turnoverDiff": -26.0,
-    "volumeRatio": 0.74,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "SMCI",
-    "name": "SMCI",
-    "price": 43.26,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "49.24M",
-    "turnoverDiff": 41.1,
-    "volumeRatio": 1.41,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "GOOGL",
-    "name": "GOOGL",
-    "price": 343.92,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "21.85M",
-    "turnoverDiff": -8.1,
-    "volumeRatio": 0.92,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "INTC",
-    "name": "INTC",
-    "price": 123.0,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "97.48M",
-    "turnoverDiff": -18.3,
-    "volumeRatio": 0.82,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "NFLX",
-    "name": "NFLX",
-    "price": 71.15,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "23.18M",
-    "turnoverDiff": -17.9,
-    "volumeRatio": 0.82,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "AVGO",
-    "name": "AVGO",
-    "price": 352.81,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "16.22M",
-    "turnoverDiff": -22.5,
-    "volumeRatio": 0.77,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "COST",
-    "name": "COST",
-    "price": 922.77,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "4.63M",
-    "turnoverDiff": 60.0,
-    "volumeRatio": 1.6,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "QCOM",
-    "name": "QCOM",
-    "price": 201.97,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "17.81M",
-    "turnoverDiff": 95.9,
-    "volumeRatio": 1.96,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "TXN",
-    "name": "TXN",
-    "price": 278.07,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "3.96M",
-    "turnoverDiff": 18.5,
-    "volumeRatio": 1.19,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "SHOP",
-    "name": "SHOP",
-    "price": 142.25,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "5.99M",
-    "turnoverDiff": -36.6,
-    "volumeRatio": 0.63,
-    "matchStrategy": false
-  },
-  {
-    "ticker": "LLY",
-    "name": "LLY",
-    "price": 1183.46,
-    "weekDiv": "無",
-    "monthDiv": "無",
-    "turnover": "1.92M",
-    "turnoverDiff": -20.5,
-    "volumeRatio": 0.8,
+    "monthDiv": "頂背離",
+    "turnover": "89.81M",
+    "turnoverDiff": 15.9,
+    "volumeRatio": 1.16,
     "matchStrategy": false
   }
 ]
