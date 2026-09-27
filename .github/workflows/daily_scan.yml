@@ -6,15 +6,19 @@ on:
     - cron: '0 22 * * 1-5'
   workflow_dispatch: # 允許你手動按按鈕隨時執行
 
+# 關鍵修復：給予 Actions 寫入 Git 倉庫的權限，否則 git push 會被拒絕
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: 檢出程式碼
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 設定 Python 環境
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -31,5 +35,4 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add stocks_data.json
-          git commit -m "更新美股篩選數據 [skip ci]" || exit 0
-          git push
+          git diff --staged --quiet || (git commit -m "更新美股篩選數據 [skip ci]" && git push)
