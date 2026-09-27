@@ -4,6 +4,7 @@ import yfinance as yf
 import json
 import time
 from datetime import datetime
+import requests
 
 # 1. 獲取美股個股清單 (排除 ETF)
 def get_us_stock_list():
@@ -70,7 +71,7 @@ def check_macd_divergence(df_kline):
 
 # 格式化市值數值 (例如：$1.5T, $250.5B, $800M)
 def format_market_cap(market_cap):
-    if market_cap is None or np.isnan(market_cap) or market_cap <= 0:
+    if not market_cap or np.isnan(market_cap) or market_cap <= 0:
         return "N/A", 0
     val = float(market_cap)
     if val >= 1e12:
@@ -82,20 +83,31 @@ def format_market_cap(market_cap):
     else:
         return f"${round(val, 0)}", val
 
-# 真·分批獲取市值數據（避免單隻重複請求）
-def get_batch_market_caps(batch_tickers):
+# 使用 Yahoo Quote API 批次獲取市值 (超快且不會被封鎖)
+def fetch_market_caps_fast(tickers_list):
     market_caps = {}
-    try:
-        tickers_obj = yf.Tickers(' '.join(batch_tickers))
-        for symbol in batch_tickers:
-            try:
-                # 直接讀取 fast_info 緩存
-                mcap = tickers_obj.tickers[symbol].fast_info.get('market_cap', None)
-                market_caps[symbol] = mcap
-            except Exception:
-                market_caps[symbol] = None
-    except Exception:
-        pass
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    
+    # 每次最多請求 200 隻股票
+    chunk_size = 200
+    for i in range(0, len(tickers_list), chunk_size):
+        chunk = tickers_list[i:i + chunk_size]
+        symbols_str = ','.join(chunk)
+        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbols_str}"
+        
+        try:
+            res = requests.get(url, headers=headers, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                results = data.get('quoteResponse', {}).get('result', [])
+                for q in results:
+                    symbol = q.get('symbol')
+                    # 取 marketCap 或 mcap
+                    mcap = q.get('marketCap', None)
+                    market_caps[symbol] = mcap
+        except Exception:
+            pass
+            
     return market_caps
 
 # 3. 核心數據處理
@@ -108,21 +120,16 @@ def process_stocks():
     
     print(f"🚀 開始全美股個股掃描，共計 {total_scanned} 隻股票...")
     
-    # 建議將批次大小適當調小至 100，提升 API 穩定度
-    batch_size = 100
+    batch_size = 200
     candidates = []
 
-    # 第一階段：全美股日線批次下載 (過濾價格與成交量)
+    # 第一階段：下載 K 線價格
     for i in range(0, total_scanned, batch_size):
         batch_tickers = tickers[i:i + batch_size]
-        print(f"階段 1/2: [{min(i + batch_size, total_scanned)}/{total_scanned}] 檢查日線量價與市值...")
+        print(f"階段 1/2: [{min(i + batch_size, total_scanned)}/{total_scanned}] 下載日線量價...")
         
         try:
-            # 1. 批次下載價格數據
             data = yf.download(batch_tickers, period="3mo", interval="1d", group_by='ticker', threads=True, progress=False)
-            
-            # 2. 批次一次過抓取該 Batch 的市值
-            mcap_dict = get_batch_market_caps(batch_tickers)
 
             for ticker in batch_tickers:
                 try:
@@ -149,18 +156,12 @@ def process_stocks():
                     # 計算日線 MACD 背離
                     day_div = check_macd_divergence(df_day)
 
-                    # 從批次字典讀取市值，不再發起獨立 HTTP 請求
-                    mcap_raw = mcap_dict.get(ticker, None)
-                    mcap_str, mcap_num = format_market_cap(mcap_raw)
-
                     candidates.append({
                         "ticker": ticker,
                         "price": price,
                         "vol_today": vol_today,
                         "vol_ratio": vol_ratio,
                         "turnover_diff": turnover_diff,
-                        "marketCapStr": mcap_str,
-                        "marketCapNum": mcap_num,
                         "dayDiv": day_div
                     })
                     success_count += 1
@@ -171,7 +172,7 @@ def process_stocks():
             failed_count += len(batch_tickers)
             continue
             
-        time.sleep(0.5)
+        time.sleep(0.3)
 
     print(f"✅ 第一階段完成！共 {len(candidates)} 隻股票通過初步篩選，開始批次計算周與月 MACD 背離...")
 
@@ -179,6 +180,10 @@ def process_stocks():
     cand_tickers = [c["ticker"] for c in candidates]
     
     if cand_tickers:
+        # 專門為通過篩選的股票，一次過快速拉取市值 API！
+        print("正在集中拉取候選股市值...")
+        mcap_dict = fetch_market_caps_fast(cand_tickers)
+
         week_data = yf.download(cand_tickers, period="1y", interval="1wk", group_by='ticker', threads=True, progress=False)
         month_data = yf.download(cand_tickers, period="3y", interval="1mo", group_by='ticker', threads=True, progress=False)
 
@@ -192,7 +197,10 @@ def process_stocks():
                 week_div = check_macd_divergence(df_week)
                 month_div = check_macd_divergence(df_month)
 
-                # 黃金策略：成交量暴增 且 在日/周/月中出現任一下影底背離
+                # 獲取市值
+                mcap_raw = mcap_dict.get(ticker, None)
+                mcap_str, mcap_num = format_market_cap(mcap_raw)
+
                 has_bottom_div = (day_div == "底背離" or week_div == "底背離" or month_div == "底背離")
                 match_strategy = bool((item["turnover_diff"] >= 20.0) and (item["vol_ratio"] >= 2.0) and has_bottom_div)
                 
@@ -203,8 +211,8 @@ def process_stocks():
                         "ticker": ticker,
                         "name": ticker,
                         "price": item["price"],
-                        "marketCap": item["marketCapStr"],
-                        "marketCapNum": item["marketCapNum"],
+                        "marketCap": mcap_str,
+                        "marketCapNum": mcap_num,
                         "dayDiv": day_div,
                         "weekDiv": week_div,
                         "monthDiv": month_div,
