@@ -3,12 +3,13 @@ import pandas as pd
 import numpy as np
 import requests
 import json
+import io
 from datetime import datetime, timezone, timedelta
 
 # 關閉 yfinance 快取以避免 GitHub Actions 出現 database is locked 錯誤
 yf.set_tz_cache_location("/tmp/yf_cache")
 
-# 1. 計算 MACD 及檢測背離
+# 1. 計算 MACD 及檢測背離 (DIF 快線已調整為 5)
 def check_macd_divergence(df):
     if df is None or len(df) < 35:
         return "無"
@@ -85,30 +86,45 @@ def get_single_market_cap(ticker_symbol, latest_price):
 
     return None
 
-# 4. 獲取美股熱門標的名單 (加入 User-Agent 防止 403 阻擋)
+# 4. 獲取美股熱門標的名單 (相容性最佳化，防止 403 及 FutureWarning)
 def get_us_stock_list():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
-        # 偽裝成瀏覽器抓取 Wikipedia 名單
         req1 = requests.get('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies', headers=headers)
         req2 = requests.get('https://en.wikipedia.org/wiki/NASDAQ-100', headers=headers)
         
-        sp500 = pd.read_html(req1.text)[0]['Symbol'].tolist()
-        nasdaq100 = pd.read_html(req2.text)[4]['Ticker'].tolist()
+        # 使用 StringIO 包裹防止 Pandas 警告
+        sp500_df = pd.read_html(io.StringIO(req1.text))[0]
+        sp500 = sp500_df['Symbol'].tolist()
         
+        nasdaq_tables = pd.read_html(io.StringIO(req2.text))
+        nasdaq100 = []
+        for df in nasdaq_tables:
+            for col in ['Ticker', 'Symbol']:
+                if col in df.columns:
+                    nasdaq100.extend(df[col].tolist())
+                    break
+
         tickers = list(set(sp500 + nasdaq100))
-        tickers = [t.replace('.', '-') for t in tickers]
-        print(f"✅ 成功載入美股核心指標股 {len(tickers)} 隻")
+        tickers = [t.replace('.', '-') for t in tickers if isinstance(t, str)]
+        print(f"✅ 成功獲取線上美股名單共 {len(tickers)} 隻")
         return tickers
     except Exception as e:
-        print(f"⚠️ 載入線上股票名單失敗 ({e})，自動切換至備用美股名單")
-        # 完整的各大板塊熱門美股清單
+        print(f"⚠️ 獲取線上名單失敗 ({e})，自動切換至美股核心備用名單")
         return [
-            "AAPL", "NVDA", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC", 
-            "BABA", "PDD", "AVGO", "ORCL", "CRM", "COST", "PEP", "TMUS", "CSCO", "TM", 
-            "QCOM", "TXN", "AMAT", "HON", "AMGN", "SBUX", "GILD", "MDLZ", "ADP", "BKNG", 
-            "ADI", "VRTX", "REGN", "LRCX", "FISV", "PANW", "SNPS", "CDNS", "KLAC", "CRWD", 
-            "PLTR", "ARM", "SMCI", "COIN", "MSTR", "UBER", "ABNB", "DIS", "NKE", "JPM"
+            "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "BRK-B", "UNH", "JNJ",
+            "JPM", "V", "PG", "XOM", "MA", "HD", "CVX", "MRK", "ABBV", "LLY",
+            "PEP", "KO", "BAC", "COST", "WMT", "TMO", "MCD", "CSCO", "ACN", "ABT",
+            "PFE", "ORCL", "DHR", "CMCSA", "AMD", "DIS", "ADBE", "TXN", "PM", "NKE",
+            "CRM", "WFC", "UNP", "UPS", "BMY", "VZ", "QCOM", "AMGN", "MS", "RTX",
+            "HON", "IBM", "LOW", "INTC", "SPGI", "COP", "CAT", "LMT", "BA", "AXP",
+            "GE", "SBUX", "DE", "AMAT", "BLK", "NOW", "PLD", "GILD", "MDLZ", "T",
+            "ADI", "TJX", "C", "ISRG", "ELV", "MMC", "LRCX", "SCHW", "SYK", "BKNG",
+            "VRTX", "ZTS", "PGR", "REGN", "CI", "PANW", "SLB", "BDX", "BSX", "TMUS",
+            "CB", "ADP", "ITW", "NOC", "AON", "FI", "WM", "CSX", "HUM", "CL",
+            "FCX", "CME", "SNPS", "MCO", "EW", "CDNS", "MCK", "SHW", "EMR", "NSC",
+            "BABA", "PDD", "BIDU", "JD", "NTES", "NIO", "XPEV", "LI", "FUTU", "PLTR",
+            "ARM", "SMCI", "COIN", "MSTR", "UBER", "ABNB", "CRWD", "RBLX", "U"
         ]
 
 # 5. 主執行邏輯
