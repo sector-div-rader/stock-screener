@@ -1,77 +1,43 @@
+import yfinance as yf
 import pandas as pd
 import numpy as np
-import yfinance as yf
+import requests
+from concurrent.futures import ThreadPoolExecutor
 import json
 import time
-from datetime import datetime
-import requests
+from datetime import datetime, timezone, timedelta
 
-# 1. 獲取美股個股清單 (排除 ETF)
-def get_us_stock_list():
-    print("正在從官方 FTP 獲取全美股上市個股清單 (過濾 ETF)...")
-    tickers = set()
-    
-    try:
-        nasdaq_url = "ftp://ftp.nasdaqtrader.com/SymbolDirectory/nasdaqlisted.txt"
-        df_nasdaq = pd.read_csv(nasdaq_url, sep="|")
-        
-        other_url = "ftp://ftp.nasdaqtrader.com/SymbolDirectory/otherlisted.txt"
-        df_other = pd.read_csv(other_url, sep="|")
-        
-        if 'ETF' in df_nasdaq.columns:
-            df_nasdaq = df_nasdaq[df_nasdaq['ETF'] != 'Y']
-            
-        if 'ETF' in df_other.columns:
-            df_other = df_other[df_other['ETF'] != 'Y']
-
-        nasdaq_symbols = df_nasdaq['Symbol'].dropna().tolist()
-        other_symbols = df_other['ACT Symbol'].dropna().tolist()
-        
-        all_symbols = nasdaq_symbols + other_symbols
-        
-        for symbol in all_symbols:
-            symbol = str(symbol).strip()
-            if (symbol and len(symbol) <= 5 and symbol.isalpha() 
-                and not symbol.startswith('File') 
-                and not symbol.startswith('Total')):
-                tickers.add(symbol)
-                
-        print(f"✅ 成功獲取 {len(tickers)} 隻全美股上市公司代號 (已排除 ETF)。")
-    except Exception as e:
-        print(f"❌ 官方 FTP 獲取失敗: {e}，切換至備用清單...")
-        fallback = [
-            "NVDA", "TSLA", "AMD", "AAPL", "PLTR", "MSFT", "AMZN", "META", "SMCI", 
-            "GOOGL", "INTC", "NFLX", "AVGO", "COST", "QCOM", "TXN", "SHOP", "LLY",
-            "BABA", "PDD", "BIDU", "JD", "NIO", "XPEV", "COIN", "MSTR", "ARM", "MU"
-        ]
-        tickers.update(fallback)
-
-    return sorted(list(tickers))
-
-# 2. 計算 MACD DIF 與背離型態
-def check_macd_divergence(df_kline):
-    if df_kline is None or len(df_kline) < 35:
+# 1. 計算 MACD 及檢測背離
+def check_macd_divergence(df):
+    if df is None or len(df) < 35:
         return "無"
     
-    close = df_kline['Close']
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
-    dif = ema12 - ema26
+    close = df['Close'].squeeze()
     
-    recent_close = float(close.iloc[-1])
-    prev_close = float(close.iloc[-15:-1].min())
-    recent_dif = float(dif.iloc[-1])
-    prev_dif = float(dif.iloc[-15:-1].min())
-    
-    if recent_close < prev_close and recent_dif > prev_dif and recent_dif < 0:
+    # 計算 MACD (12, 26, 9)
+    exp1 = close.ewm(span=12, adjust=False).mean()
+    exp2 = close.ewm(span=26, adjust=False).mean()
+    macd = exp1 - exp2
+    signal = macd.ewm(span=9, adjust=False).mean()
+    hist = macd - signal
+
+    # 取得最新 3 根 K 線數據
+    h0, h1, h2 = hist.iloc[-1], hist.iloc[-2], hist.iloc[-3]
+    c0, c1, c2 = close.iloc[-1], close.iloc[-2], close.iloc[-3]
+
+    # 底背離條件：價格創新低，但 MACD 柱狀圖回升
+    if (c0 < c1 or c0 < c2) and (h0 > h1 and h1 < h2) and h0 < 0:
         return "底背離"
-    elif recent_close > float(close.iloc[-15:-1].max()) and recent_dif < float(dif.iloc[-15:-1].max()) and recent_dif > 0:
+    
+    # 頂背離條件：價格創新高，但 MACD 柱狀圖回落
+    if (c0 > c1 or c0 > c2) and (h0 < h1 and h1 > h2) and h0 > 0:
         return "頂背離"
+
     return "無"
 
-# 格式化市值數值 (例如：$1.5T, $250.5B, $800M)
+# 2. 格式化市值數值 (例如：$1.5T, $250.5B, $800M)
 def format_market_cap(market_cap):
-    if not market_cap or np.isnan(market_cap) or market_cap <= 0:
+    if market_cap is None or np.isnan(market_cap) or market_cap <= 0:
         return "N/A", 0
     val = float(market_cap)
     if val >= 1e12:
@@ -83,107 +49,106 @@ def format_market_cap(market_cap):
     else:
         return f"${round(val, 0)}", val
 
-# 使用 Yahoo Quote API 批次獲取市值 (超快且不會被封鎖)
-def fetch_market_caps_fast(tickers_list):
-    market_caps = {}
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+# 3. 穩健獲取單隻股市值 (帶三重備援)
+def get_single_market_cap(ticker_symbol, latest_price):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
-    # 每次最多請求 200 隻股票
-    chunk_size = 200
-    for i in range(0, len(tickers_list), chunk_size):
-        chunk = tickers_list[i:i + chunk_size]
-        symbols_str = ','.join(chunk)
-        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbols_str}"
-        
-        try:
-            res = requests.get(url, headers=headers, timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                results = data.get('quoteResponse', {}).get('result', [])
-                for q in results:
-                    symbol = q.get('symbol')
-                    # 取 marketCap 或 mcap
-                    mcap = q.get('marketCap', None)
-                    market_caps[symbol] = mcap
-        except Exception:
-            pass
-            
-    return market_caps
+    # 嘗試 1: Yahoo Quote v6 API
+    try:
+        url = f"https://query2.finance.yahoo.com/v6/finance/quoteSummary/{ticker_symbol}?modules=price"
+        res = requests.get(url, headers=headers, timeout=3)
+        if res.status_code == 200:
+            mcap = res.json()['quoteSummary']['result'][0]['price'].get('marketCap', {}).get('raw')
+            if mcap and mcap > 0:
+                return mcap
+    except Exception:
+        pass
 
-# 3. 核心數據處理
+    # 嘗試 2: yfinance fast_info
+    try:
+        t = yf.Ticker(ticker_symbol)
+        mcap = t.fast_info.get('market_cap', None)
+        if mcap and not np.isnan(mcap) and mcap > 0:
+            return mcap
+    except Exception:
+        pass
+
+    # 嘗試 3: 用總股本 * 最新價格計算估算市值
+    try:
+        t = yf.Ticker(ticker_symbol)
+        shares = t.fast_info.get('shares', None)
+        if shares and shares > 0 and latest_price > 0:
+            return shares * latest_price
+    except Exception:
+        pass
+
+    return None
+
+# 4. 批次下載全美股名單 (S&P 500, Nasdaq 100, Dow Jones)
+def get_us_stock_list():
+    try:
+        sp500 = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0]['Symbol'].tolist()
+        nasdaq100 = pd.read_html('https://en.wikipedia.org/wiki/NASDAQ-100')[4]['Ticker'].tolist()
+        
+        tickers = list(set(sp500 + nasdaq100))
+        tickers = [t.replace('.', '-') for t in tickers]
+        print(f"✅ 成功載入美股核心指標股 {len(tickers)} 隻")
+        return tickers
+    except Exception as e:
+        print(f"⚠️ 載入股票名單失敗: {e}，改用預設核心名單")
+        return ["AAPL", "NVDA", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC", "BABA", "PDD"]
+
+# 5. 主執行邏輯
 def process_stocks():
     tickers = get_us_stock_list()
-    results = []
-    total_scanned = len(tickers)
-    success_count = 0
-    failed_count = 0
     
-    print(f"🚀 開始全美股個股掃描，共計 {total_scanned} 隻股票...")
-    
-    batch_size = 200
+    print("🚀 [階段 1/2] 正在批量下載日線數據並初步篩選...")
+    # 下載日線歷史數據
+    daily_data = yf.download(tickers, period="60d", interval="1d", group_by='ticker', threads=True, progress=False)
+
     candidates = []
 
-    # 第一階段：下載 K 線價格
-    for i in range(0, total_scanned, batch_size):
-        batch_tickers = tickers[i:i + batch_size]
-        print(f"階段 1/2: [{min(i + batch_size, total_scanned)}/{total_scanned}] 下載日線量價...")
-        
+    for ticker in tickers:
         try:
-            data = yf.download(batch_tickers, period="3mo", interval="1d", group_by='ticker', threads=True, progress=False)
-
-            for ticker in batch_tickers:
-                try:
-                    df_day = data[ticker].dropna(how='all') if len(batch_tickers) > 1 else data.dropna(how='all')
-                    
-                    if df_day is None or len(df_day) < 35:
-                        failed_count += 1
-                        continue
-                        
-                    price = round(float(df_day['Close'].iloc[-1]), 2)
-                    if price < 2.0:
-                        success_count += 1
-                        continue
-
-                    vol_today = float(df_day['Volume'].iloc[-1])
-                    vol_yesterday = float(df_day['Volume'].iloc[-2])
-                    if vol_today < 50000:
-                        success_count += 1
-                        continue
-
-                    vol_ratio = round(vol_today / vol_yesterday, 2) if vol_yesterday > 0 else 1.0
-                    turnover_diff = round(((vol_today - vol_yesterday) / vol_yesterday) * 100, 1) if vol_yesterday > 0 else 0.0
-                    
-                    # 計算日線 MACD 背離
-                    day_div = check_macd_divergence(df_day)
-
-                    candidates.append({
-                        "ticker": ticker,
-                        "price": price,
-                        "vol_today": vol_today,
-                        "vol_ratio": vol_ratio,
-                        "turnover_diff": turnover_diff,
-                        "dayDiv": day_div
-                    })
-                    success_count += 1
-                except Exception:
-                    failed_count += 1
-                    continue
-        except Exception:
-            failed_count += len(batch_tickers)
-            continue
+            df = daily_data[ticker].dropna(how='all') if len(tickers) > 1 else daily_data.dropna(how='all')
+            if len(df) < 30:
+                continue
             
-        time.sleep(0.3)
+            # 日線 MACD 背離
+            day_div = check_macd_divergence(df)
+            
+            # 最新收盤價與成交量
+            latest_price = float(df['Close'].iloc[-1])
+            vol_today = float(df['Volume'].iloc[-1])
+            vol_5d_avg = float(df['Volume'].iloc[-6:-1].mean())
 
-    print(f"✅ 第一階段完成！共 {len(candidates)} 隻股票通過初步篩選，開始批次計算周與月 MACD 背離...")
+            # 成交量放大倍數 (Volume Ratio)
+            vol_ratio = round(vol_today / vol_5d_avg, 2) if vol_5d_avg > 0 else 1.0
 
-    # 第二階段：批次計算周線與月線 MACD 背離
+            # 簡化換手率差異估算 (基於成交量變幅)
+            turnover_diff = round((vol_today - vol_5d_avg) / vol_5d_avg * 100, 2) if vol_5d_avg > 0 else 0.0
+
+            # 初步篩選：有背離 或 量價異常增長
+            if day_div != "無" or turnover_diff >= 20.0 or vol_ratio >= 2.0:
+                candidates.append({
+                    "ticker": ticker,
+                    "price": round(latest_price, 2),
+                    "dayDiv": day_div,
+                    "vol_today": vol_today,
+                    "vol_ratio": vol_ratio,
+                    "turnover_diff": turnover_diff
+                })
+        except Exception:
+            continue
+
+    print(f"✅ 階段 1 完成！共篩選出 {len(candidates)} 隻候選股票。")
+
+    print("🚀 [階段 2/2] 正在下載周線/月線數據並計算市值...")
     cand_tickers = [c["ticker"] for c in candidates]
-    
-    if cand_tickers:
-        # 專門為通過篩選的股票，一次過快速拉取市值 API！
-        print("正在集中拉取候選股市值...")
-        mcap_dict = fetch_market_caps_fast(cand_tickers)
+    results = []
 
+    if cand_tickers:
+        # 下載周線與月線數據
         week_data = yf.download(cand_tickers, period="1y", interval="1wk", group_by='ticker', threads=True, progress=False)
         month_data = yf.download(cand_tickers, period="3y", interval="1mo", group_by='ticker', threads=True, progress=False)
 
@@ -197,49 +162,48 @@ def process_stocks():
                 week_div = check_macd_divergence(df_week)
                 month_div = check_macd_divergence(df_month)
 
-                # 獲取市值
-                mcap_raw = mcap_dict.get(ticker, None)
+                # 逐一精準獲取市值 (具備 3 重 Fallback)
+                mcap_raw = get_single_market_cap(ticker, item["price"])
                 mcap_str, mcap_num = format_market_cap(mcap_raw)
 
+                # 是否符合多重策略條件
                 has_bottom_div = (day_div == "底背離" or week_div == "底背離" or month_div == "底背離")
                 match_strategy = bool((item["turnover_diff"] >= 20.0) and (item["vol_ratio"] >= 2.0) and has_bottom_div)
                 
                 futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
 
-                if match_strategy or day_div != "無" or week_div != "無" or month_div != "無" or (item["turnover_diff"] >= 20.0 and item["vol_ratio"] >= 2.0):
-                    results.append({
-                        "ticker": ticker,
-                        "name": ticker,
-                        "price": item["price"],
-                        "marketCap": mcap_str,
-                        "marketCapNum": mcap_num,
-                        "dayDiv": day_div,
-                        "weekDiv": week_div,
-                        "monthDiv": month_div,
-                        "turnover": f"{round(item['vol_today']/1000000, 2)}M",
-                        "turnoverDiff": item["turnover_diff"],
-                        "volumeRatio": item["vol_ratio"],
-                        "matchStrategy": match_strategy,
-                        "futuUrl": futu_url
-                    })
-            except Exception:
+                results.append({
+                    "ticker": ticker,
+                    "name": ticker,
+                    "price": item["price"],
+                    "marketCap": mcap_str,
+                    "marketCapNum": mcap_num,
+                    "dayDiv": day_div,
+                    "weekDiv": week_div,
+                    "monthDiv": month_div,
+                    "turnover": f"{round(item['vol_today']/1000000, 2)}M",
+                    "turnoverDiff": item["turnover_diff"],
+                    "volumeRatio": item["vol_ratio"],
+                    "matchStrategy": match_strategy,
+                    "futuUrl": futu_url
+                })
+            except Exception as e:
                 continue
 
-    print(f"✅ 全美股掃描完成！總數: {total_scanned}, 成功: {success_count}, 失敗: {failed_count}")
+    # 計算香港時間 (UTC+8)
+    hkt = timezone(timedelta(hours=8))
+    now_hkt = datetime.now(hkt).strftime("%Y-%m-%d %H:%M")
 
     output_data = {
-        "stats": {
-            "totalScanned": total_scanned,
-            "successCount": success_count,
-            "failedCount": failed_count,
-            "matchedCount": len(results),
-            "lastUpdated": datetime.now().strftime("%Y-%m-%d %H:%M")
-        },
+        "updatedAt": now_hkt,
         "stocks": results
     }
 
+    # 寫入 JSON 檔案
     with open("stocks_data.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
+
+    print(f"🎉 成功寫入 {len(results)} 條數據至 stocks_data.json！更新時間 (HKT): {now_hkt}")
 
 if __name__ == "__main__":
     process_stocks()
