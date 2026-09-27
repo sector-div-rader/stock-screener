@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股 MACD 背離與成交量監控看板</title>
+    <title>美股 MACD 多週期背離與量價監控看板</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome 圖示 -->
@@ -17,6 +17,11 @@
         .active-sort {
             color: #2563eb;
         }
+        .btn-filter-active {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            border-color: #2563eb !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans text-gray-800">
@@ -26,7 +31,7 @@
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
-                <h1 class="text-xl font-bold tracking-wide">美股 MACD 背離與量價監控</h1>
+                <h1 class="text-xl font-bold tracking-wide">美股 MACD 多週期背離監控</h1>
             </div>
             <div class="text-xs md:text-sm text-gray-400 mt-2 sm:mt-0">
                 更新時間：<span id="last-updated-time" class="text-gray-200 font-mono">載入中...</span>
@@ -47,7 +52,7 @@
                 <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-success">0</div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                <span class="text-gray-500 text-xs font-semibold uppercase">篩選出關注標的</span>
+                <span class="text-gray-500 text-xs font-semibold uppercase">關注標的總數</span>
                 <div class="text-2xl font-bold text-blue-600 mt-1" id="stat-matched">0</div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
@@ -56,29 +61,39 @@
             </div>
         </div>
 
-        <!-- 篩選與搜尋工具列 -->
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-4 items-center justify-between">
-            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+        <!-- 快捷週期篩選按鈕列 -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <!-- 按鈕切換區 -->
+                <div class="flex flex-wrap gap-2" id="filter-btn-group">
+                    <button onclick="setFilter('all', this)" class="filter-btn btn-filter-active px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        全部關注標的
+                    </button>
+                    <button onclick="setFilter('dayDivOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        📅 日底背離
+                    </button>
+                    <button onclick="setFilter('weekDivOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        📈 週底背離
+                    </button>
+                    <button onclick="setFilter('monthDivOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        🚀 月底背離
+                    </button>
+                    <button onclick="setFilter('matchOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        🌟 僅黃金策略 (放量+背離)
+                    </button>
+                </div>
+
                 <!-- 搜尋框 -->
                 <div class="relative w-full sm:w-64">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="search-input" placeholder="搜尋代號 (例如 NVDA)" 
-                           class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <input type="text" id="search-input" placeholder="搜尋代號 (如 NVDA)" 
+                           class="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                            oninput="onSearchOrFilterChange()">
                 </div>
-
-                <!-- 策略快速篩選器 -->
-                <select id="filter-strategy" onchange="onSearchOrFilterChange()" 
-                        class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="all">所有關注標的</option>
-                    <option value="matchOnly">🌟 僅顯示符合黃金策略 (放量+背離)</option>
-                    <option value="bottomDivOnly">📈 僅顯示有底背離 (周/月)</option>
-                    <option value="volSpikeOnly">🔥 僅顯示放量異動 (成交量比 ≥ 2x)</option>
-                </select>
             </div>
 
-            <div class="text-xs text-gray-500">
-                顯示 <span id="current-count" class="font-bold text-gray-700">0</span> 隻股票
+            <div class="text-xs text-gray-500 flex justify-between items-center pt-2 border-t border-gray-100">
+                <span>目前顯示：<strong id="current-count" class="text-gray-800">0</strong> 隻標的</span>
             </div>
         </div>
 
@@ -97,13 +112,14 @@
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('marketCapNum')">
                                 市值 <i id="sort-marketCapNum" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 text-center">周線 MACD 背離</th>
-                            <th class="py-3 px-4 text-center">月線 MACD 背離</th>
+                            <th class="py-3 px-4 text-center">日線 MACD</th>
+                            <th class="py-3 px-4 text-center">週線 MACD</th>
+                            <th class="py-3 px-4 text-center">月線 MACD</th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('turnoverDiff')">
                                 今日成交金額增幅 (%) <i id="sort-turnoverDiff" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volumeRatio')">
-                                成交量比 (今日/昨日) <i id="sort-volumeRatio" class="fa-solid fa-sort sort-icon"></i>
+                                成交量比 (今/昨) <i id="sort-volumeRatio" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 text-center">策略匹配</th>
                             <th class="py-3 px-4 text-center">快捷連結</th>
@@ -146,10 +162,10 @@
         let currentPage = 1;
         const pageSize = 20;
 
+        let activeFilter = 'all';
         let currentSortColumn = 'marketCapNum';
-        let currentSortOrder = 'desc'; // 'asc' 或 'desc'
+        let currentSortOrder = 'desc';
 
-        // 頁面載入時抓取 JSON 資料
         window.addEventListener('DOMContentLoaded', () => {
             fetchStockData();
         });
@@ -161,7 +177,6 @@
                 
                 const data = await response.json();
                 
-                // 渲染統計資料
                 document.getElementById('last-updated-time').innerText = data.stats.lastUpdated || '未知';
                 document.getElementById('stat-total').innerText = data.stats.totalScanned?.toLocaleString() || '0';
                 document.getElementById('stat-success').innerText = data.stats.successCount?.toLocaleString() || '0';
@@ -169,61 +184,64 @@
                 
                 rawData = data.stocks || [];
                 
-                // 計算符合策略的數量
                 const strategyMatches = rawData.filter(s => s.matchStrategy).length;
                 document.getElementById('stat-strategy').innerText = strategyMatches.toLocaleString();
 
-                // 初始應用搜尋與篩選
                 onSearchOrFilterChange();
             } catch (err) {
                 console.error("載入數據錯誤:", err);
                 document.getElementById('stock-table-body').innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center py-8 text-red-500 font-medium">
-                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗，請檢查 stocks_data.json 是否正確生成。
+                        <td colspan="10" class="text-center py-8 text-red-500 font-medium">
+                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗，請確認 stocks_data.json 是否正確生成。
                         </td>
                     </tr>
                 `;
             }
         }
 
-        // 處理篩選與搜尋
+        // 切換快捷按鈕
+        function setFilter(filterType, element) {
+            activeFilter = filterType;
+            
+            // 更新按鈕樣式
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('btn-filter-active'));
+            element.classList.add('btn-filter-active');
+
+            onSearchOrFilterChange();
+        }
+
         function onSearchOrFilterChange() {
             const searchTxt = document.getElementById('search-input').value.trim().toUpperCase();
-            const filterVal = document.getElementById('filter-strategy').value;
 
             filteredData = rawData.filter(item => {
-                // 代號搜尋過濾
                 const matchesSearch = item.ticker.toUpperCase().includes(searchTxt);
                 
-                // 策略類型過濾
                 let matchesFilter = true;
-                if (filterVal === 'matchOnly') {
+                if (activeFilter === 'matchOnly') {
                     matchesFilter = item.matchStrategy === true;
-                } else if (filterVal === 'bottomDivOnly') {
-                    matchesFilter = (item.weekDiv === '底背離' || item.monthDiv === '底背離');
-                } else if (filterVal === 'volSpikeOnly') {
-                    matchesFilter = item.volumeRatio >= 2.0;
+                } else if (activeFilter === 'dayDivOnly') {
+                    matchesFilter = (item.dayDiv === '底背離');
+                } else if (activeFilter === 'weekDivOnly') {
+                    matchesFilter = (item.weekDiv === '底背離');
+                } else if (activeFilter === 'monthDivOnly') {
+                    matchesFilter = (item.monthDiv === '底背離');
                 }
 
                 return matchesSearch && matchesFilter;
             });
 
-            // 執行排序
             sortData();
-
-            // 重置頁數
             currentPage = 1;
             renderTable();
         }
 
-        // 表格排序邏輯
         function sortTable(column) {
             if (currentSortColumn === column) {
                 currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSortColumn = column;
-                currentSortOrder = (column === 'ticker') ? 'asc' : 'desc'; // 文字預設升冪，數字預設降冪
+                currentSortOrder = (column === 'ticker') ? 'asc' : 'desc';
             }
             
             updateSortIcons();
@@ -260,7 +278,6 @@
             }
         }
 
-        // 渲染表格資料
         function renderTable() {
             const tbody = document.getElementById('stock-table-body');
             const noData = document.getElementById('no-data');
@@ -284,18 +301,14 @@
             const pageData = filteredData.slice(startIdx, startIdx + pageSize);
 
             tbody.innerHTML = pageData.map(stock => {
-                // 背離標籤樣式
                 const getDivTag = (div) => {
-                    if (div === '底背離') return `<span class="bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-md text-xs">底背離</span>`;
-                    if (div === '頂背離') return `<span class="bg-green-100 text-green-700 font-bold px-2.5 py-1 rounded-md text-xs">頂背離</span>`;
+                    if (div === '底背離') return `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-xs">底背離</span>`;
+                    if (div === '頂背離') return `<span class="bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded text-xs">頂背離</span>`;
                     return `<span class="text-gray-400 text-xs">-</span>`;
                 };
 
-                // 成交金額增幅樣式
                 const turnoverDiffClass = stock.turnoverDiff >= 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold';
                 const turnoverDiffSign = stock.turnoverDiff >= 0 ? '+' : '';
-
-                // 成交量比樣式
                 const volRatioClass = stock.volumeRatio >= 2.0 ? 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded' : 'text-gray-700';
 
                 return `
@@ -303,6 +316,7 @@
                         <td class="py-3.5 px-4 font-bold text-gray-900">${stock.ticker}</td>
                         <td class="py-3.5 px-4 text-right font-mono font-medium">${stock.price.toFixed(2)}</td>
                         <td class="py-3.5 px-4 text-right font-mono font-semibold text-gray-700">${stock.marketCap || 'N/A'}</td>
+                        <td class="py-3.5 px-4 text-center">${getDivTag(stock.dayDiv)}</td>
                         <td class="py-3.5 px-4 text-center">${getDivTag(stock.weekDiv)}</td>
                         <td class="py-3.5 px-4 text-center">${getDivTag(stock.monthDiv)}</td>
                         <td class="py-3.5 px-4 text-right font-mono ${turnoverDiffClass}">
@@ -329,14 +343,12 @@
                 `;
             }).join('');
 
-            // 更新分頁按鈕狀態
             document.getElementById('page-num').innerText = currentPage;
             document.getElementById('total-pages').innerText = totalPages;
             document.getElementById('prev-btn').disabled = (currentPage === 1);
             document.getElementById('next-btn').disabled = (currentPage === totalPages);
         }
 
-        // 分頁切換
         function changePage(delta) {
             const totalPages = Math.ceil(filteredData.length / pageSize);
             currentPage += delta;
