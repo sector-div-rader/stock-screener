@@ -5,6 +5,7 @@ import json
 import os
 import requests
 import io
+import time
 from datetime import datetime
 
 # 1. 從 NASDAQ 官方 FTP 伺服器獲取全美股個股清單 (排除 ETF 與低價股)
@@ -36,7 +37,7 @@ def get_us_stock_list():
         
         for symbol in all_symbols:
             symbol = str(symbol).strip()
-            # 過濾無效符號、權證、特別股與測試代號 (例如帶有 $、.、~、File Creation Time 等)
+            # 過濾無效符號、權證、特別股與測試代號
             if (symbol and len(symbol) <= 5 and symbol.isalpha() 
                 and not symbol.startswith('File') 
                 and not symbol.startswith('Total')):
@@ -75,7 +76,7 @@ def check_macd_divergence(df_kline):
         return "頂背離"
     return "無"
 
-# 3. 核心數據處理
+# 3. 核心數據處理 (採用批次下載優化)
 def process_stocks():
     tickers = get_us_stock_list()
     results = []
@@ -85,72 +86,82 @@ def process_stocks():
     
     print(f"🚀 開始全美股個股掃描，共計 {total_scanned} 隻股票...")
     
-    count = 0
-    for ticker in tickers:
-        count += 1
-        if count % 200 == 0 or count == total_scanned:
-            print(f"掃描進度: [{count}/{total_scanned}] (已完成 {round(count/total_scanned*100, 1)}%)")
-
+    # 每 200 隻股票為一個 Batch 批次處理
+    batch_size = 200
+    for i in range(0, total_scanned, batch_size):
+        batch_tickers = tickers[i:i + batch_size]
+        print(f"進度: [{min(i + batch_size, total_scanned)}/{total_scanned}] 批次下載數據中...")
+        
         try:
-            stock = yf.Ticker(ticker)
-            # 抓取日 K 線 (計算現價、成交量與換手率)
-            df_day = stock.history(period="1mo", interval="1d")
-            if df_day is None or len(df_day) < 2:
-                failed_count += 1
-                continue
-                
-            price = round(float(df_day['Close'].iloc[-1]), 2)
+            # 批次下載日 K 線數據
+            data = yf.download(batch_tickers, period="1mo", interval="1d", group_by='ticker', threads=True, progress=False)
             
-            # 【條件 1】：排除現價低於 $2.00 美元的股票
-            if price < 2.0:
-                success_count += 1  # 成功獲取資料但被價格條件過濾
-                continue
+            for ticker in batch_tickers:
+                try:
+                    # 獲取單隻股票 Dataframe
+                    if len(batch_tickers) > 1:
+                        df_day = data[ticker].dropna(how='all') if ticker in data else None
+                    else:
+                        df_day = data.dropna(how='all')
+                    
+                    if df_day is None or len(df_day) < 2:
+                        failed_count += 1
+                        continue
+                        
+                    price = round(float(df_day['Close'].iloc[-1]), 2)
+                    
+                    # 條件 1：排除現價低於 $2.00 美元的股票
+                    if price < 2.0:
+                        success_count += 1
+                        continue
 
-            vol_today = float(df_day['Volume'].iloc[-1])
-            vol_yesterday = float(df_day['Volume'].iloc[-2])
-            
-            # 【條件 2】：過濾日成交量過低 (< 50,000 股) 的冷門股
-            if vol_today < 50000:
-                success_count += 1
-                continue
+                    vol_today = float(df_day['Volume'].iloc[-1])
+                    vol_yesterday = float(df_day['Volume'].iloc[-2])
+                    
+                    # 條件 2：過濾日成交量過低 (< 50,000 股) 的冷門股
+                    if vol_today < 50000:
+                        success_count += 1
+                        continue
 
-            vol_ratio = round(vol_today / vol_yesterday, 2) if vol_yesterday > 0 else 1.0
-            turnover_diff = round(((vol_today - vol_yesterday) / vol_yesterday) * 100, 1) if vol_yesterday > 0 else 0.0
-            
-            # 抓取週 K 與月 K 線
-            df_week = stock.history(period="1y", interval="1wk")
-            df_month = stock.history(period="3y", interval="1mo")
-            
-            week_div = check_macd_divergence(df_week)
-            month_div = check_macd_divergence(df_month)
-            
-            # 強制轉換為 Python 原生 bool，防止 JSON dump 報錯
-            match_strategy = bool((turnover_diff >= 20.0) and (vol_ratio >= 2.0) and (week_div == "底背離" or month_div == "底背離"))
-            
-            # 生成富途網址 (前端會自動判定手機/電腦切換)
-            futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
+                    vol_ratio = round(vol_today / vol_yesterday, 2) if vol_yesterday > 0 else 1.0
+                    turnover_diff = round(((vol_today - vol_yesterday) / vol_yesterday) * 100, 1) if vol_yesterday > 0 else 0.0
+                    
+                    # 針對通過初步過濾的標的抓取週 K 與月 K
+                    stock = yf.Ticker(ticker)
+                    df_week = stock.history(period="1y", interval="1wk")
+                    df_month = stock.history(period="3y", interval="1mo")
+                    
+                    week_div = check_macd_divergence(df_week)
+                    month_div = check_macd_divergence(df_month)
+                    
+                    match_strategy = bool((turnover_diff >= 20.0) and (vol_ratio >= 2.0) and (week_div == "底背離" or month_div == "底背離"))
+                    futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
 
-            # 只要符合策略或有背離/爆量特徵就寫入
-            if match_strategy or week_div != "無" or month_div != "無" or (turnover_diff >= 20.0 and vol_ratio >= 2.0):
-                results.append({
-                    "ticker": ticker,
-                    "name": ticker,
-                    "price": price,
-                    "weekDiv": week_div,
-                    "monthDiv": month_div,
-                    "turnover": f"{round(vol_today/1000000, 2)}M",
-                    "turnoverDiff": turnover_diff,
-                    "volumeRatio": vol_ratio,
-                    "matchStrategy": match_strategy,
-                    "futuUrl": futu_url
-                })
-            
-            success_count += 1
+                    if match_strategy or week_div != "無" or month_div != "無" or (turnover_diff >= 20.0 and vol_ratio >= 2.0):
+                        results.append({
+                            "ticker": ticker,
+                            "name": ticker,
+                            "price": price,
+                            "weekDiv": week_div,
+                            "monthDiv": month_div,
+                            "turnover": f"{round(vol_today/1000000, 2)}M",
+                            "turnoverDiff": turnover_diff,
+                            "volumeRatio": vol_ratio,
+                            "matchStrategy": match_strategy,
+                            "futuUrl": futu_url
+                        })
+                    
+                    success_count += 1
+                except Exception:
+                    failed_count += 1
+                    continue
         except Exception:
-            # 個別股票查詢失敗時記錄失敗次數，並自動跳過
-            failed_count += 1
+            failed_count += len(batch_tickers)
             continue
             
+        # 間隔 1 秒，確保伺服器穩定
+        time.sleep(1)
+
     print(f"✅ 全美股掃描完成！總數: {total_scanned}, 成功: {success_count}, 失敗: {failed_count}")
 
     # 輸出包含統計數據與股票清單的 JSON 檔
