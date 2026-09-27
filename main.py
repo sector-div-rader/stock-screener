@@ -42,7 +42,7 @@ def get_us_stock_list():
                 and not symbol.startswith('Total')):
                 tickers.add(symbol)
                 
-        print(f"✅ 成功獲取 {len(tickers)} 隻全美股上市公司個股代號 (已排除 ETF)。")
+        print(f"✅ 成功獲取 {len(tickers)} 隻全美股上市公司代號 (已排除 ETF)。")
     except Exception as e:
         print(f"❌ 官方 FTP 獲取失敗: {e}，切換至備用清單...")
         fallback = [
@@ -79,34 +79,39 @@ def check_macd_divergence(df_kline):
 def process_stocks():
     tickers = get_us_stock_list()
     results = []
-    total = len(tickers)
+    total_scanned = len(tickers)
+    success_count = 0
+    failed_count = 0
     
-    print(f"🚀 開始全美股個股掃描，共計 {total} 隻股票...")
+    print(f"🚀 開始全美股個股掃描，共計 {total_scanned} 隻股票...")
     
     count = 0
     for ticker in tickers:
         count += 1
-        if count % 200 == 0 or count == total:
-            print(f"掃描進度: [{count}/{total}] (已完成 {round(count/total*100, 1)}%)")
+        if count % 200 == 0 or count == total_scanned:
+            print(f"掃描進度: [{count}/{total_scanned}] (已完成 {round(count/total_scanned*100, 1)}%)")
 
         try:
             stock = yf.Ticker(ticker)
             # 抓取日 K 線 (計算現價、成交量與換手率)
             df_day = stock.history(period="1mo", interval="1d")
             if df_day is None or len(df_day) < 2:
+                failed_count += 1
                 continue
                 
             price = round(float(df_day['Close'].iloc[-1]), 2)
             
-            # 【新加條件 1】：排除現價低於 $2.00 美元的股票
+            # 【條件 1】：排除現價低於 $2.00 美元的股票
             if price < 2.0:
+                success_count += 1  # 成功獲取資料但被價格條件過濾
                 continue
 
             vol_today = float(df_day['Volume'].iloc[-1])
             vol_yesterday = float(df_day['Volume'].iloc[-2])
             
-            # 【過濾條件 2】：過濾日成交量過低 (< 50,000 股) 的冷門股/殭屍股
+            # 【條件 2】：過濾日成交量過低 (< 50,000 股) 的冷門股
             if vol_today < 50000:
+                success_count += 1
                 continue
 
             vol_ratio = round(vol_today / vol_yesterday, 2) if vol_yesterday > 0 else 1.0
@@ -122,6 +127,9 @@ def process_stocks():
             # 強制轉換為 Python 原生 bool，防止 JSON dump 報錯
             match_strategy = bool((turnover_diff >= 20.0) and (vol_ratio >= 2.0) and (week_div == "底背離" or month_div == "底背離"))
             
+            # 生成富途網址 (前端會自動判定手機/電腦切換)
+            futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
+
             # 只要符合策略或有背離/爆量特徵就寫入
             if match_strategy or week_div != "無" or month_div != "無" or (turnover_diff >= 20.0 and vol_ratio >= 2.0):
                 results.append({
@@ -133,17 +141,32 @@ def process_stocks():
                     "turnover": f"{round(vol_today/1000000, 2)}M",
                     "turnoverDiff": turnover_diff,
                     "volumeRatio": vol_ratio,
-                    "matchStrategy": match_strategy
+                    "matchStrategy": match_strategy,
+                    "futuUrl": futu_url
                 })
+            
+            success_count += 1
         except Exception:
-            # 個別股票查詢失敗時自動跳過，保持程式穩定執行
+            # 個別股票查詢失敗時記錄失敗次數，並自動跳過
+            failed_count += 1
             continue
             
-    print(f"✅ 全美股個股掃描完成！共篩選出 {len(results)} 隻符合條件的標的。")
+    print(f"✅ 全美股掃描完成！總數: {total_scanned}, 成功: {success_count}, 失敗: {failed_count}")
 
-    # 將結果輸出為 JSON 檔
+    # 輸出包含統計數據與股票清單的 JSON 檔
+    output_data = {
+        "stats": {
+            "totalScanned": total_scanned,
+            "successCount": success_count,
+            "failedCount": failed_count,
+            "matchedCount": len(results),
+            "lastUpdated": datetime.now().strftime("%Y-%m-%d %H:%M")
+        },
+        "stocks": results
+    }
+
     with open("stocks_data.json", "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+        json.dump(output_data, f, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
     process_stocks()
