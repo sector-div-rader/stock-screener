@@ -2,10 +2,11 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import requests
-from concurrent.futures import ThreadPoolExecutor
 import json
-import time
 from datetime import datetime, timezone, timedelta
+
+# 關閉 yfinance 快取以避免 GitHub Actions 出現 database is locked 錯誤
+yf.set_tz_cache_location("/tmp/yf_cache")
 
 # 1. 計算 MACD 及檢測背離
 def check_macd_divergence(df):
@@ -14,8 +15,8 @@ def check_macd_divergence(df):
     
     close = df['Close'].squeeze()
     
-    # 計算 MACD (12, 26, 9)
-    exp1 = close.ewm(span=12, adjust=False).mean()
+    # 計算 MACD (5, 26, 9)
+    exp1 = close.ewm(span=5, adjust=False).mean()
     exp2 = close.ewm(span=26, adjust=False).mean()
     macd = exp1 - exp2
     signal = macd.ewm(span=9, adjust=False).mean()
@@ -84,26 +85,37 @@ def get_single_market_cap(ticker_symbol, latest_price):
 
     return None
 
-# 4. 批次下載全美股名單 (S&P 500, Nasdaq 100, Dow Jones)
+# 4. 獲取美股熱門標的名單 (加入 User-Agent 防止 403 阻擋)
 def get_us_stock_list():
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     try:
-        sp500 = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0]['Symbol'].tolist()
-        nasdaq100 = pd.read_html('https://en.wikipedia.org/wiki/NASDAQ-100')[4]['Ticker'].tolist()
+        # 偽裝成瀏覽器抓取 Wikipedia 名單
+        req1 = requests.get('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies', headers=headers)
+        req2 = requests.get('https://en.wikipedia.org/wiki/NASDAQ-100', headers=headers)
+        
+        sp500 = pd.read_html(req1.text)[0]['Symbol'].tolist()
+        nasdaq100 = pd.read_html(req2.text)[4]['Ticker'].tolist()
         
         tickers = list(set(sp500 + nasdaq100))
         tickers = [t.replace('.', '-') for t in tickers]
         print(f"✅ 成功載入美股核心指標股 {len(tickers)} 隻")
         return tickers
     except Exception as e:
-        print(f"⚠️ 載入股票名單失敗: {e}，改用預設核心名單")
-        return ["AAPL", "NVDA", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC", "BABA", "PDD"]
+        print(f"⚠️ 載入線上股票名單失敗 ({e})，自動切換至備用美股名單")
+        # 完整的各大板塊熱門美股清單
+        return [
+            "AAPL", "NVDA", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC", 
+            "BABA", "PDD", "AVGO", "ORCL", "CRM", "COST", "PEP", "TMUS", "CSCO", "TM", 
+            "QCOM", "TXN", "AMAT", "HON", "AMGN", "SBUX", "GILD", "MDLZ", "ADP", "BKNG", 
+            "ADI", "VRTX", "REGN", "LRCX", "FISV", "PANW", "SNPS", "CDNS", "KLAC", "CRWD", 
+            "PLTR", "ARM", "SMCI", "COIN", "MSTR", "UBER", "ABNB", "DIS", "NKE", "JPM"
+        ]
 
 # 5. 主執行邏輯
 def process_stocks():
     tickers = get_us_stock_list()
     
     print("🚀 [階段 1/2] 正在批量下載日線數據並初步篩選...")
-    # 下載日線歷史數據
     daily_data = yf.download(tickers, period="60d", interval="1d", group_by='ticker', threads=True, progress=False)
 
     candidates = []
@@ -114,21 +126,14 @@ def process_stocks():
             if len(df) < 30:
                 continue
             
-            # 日線 MACD 背離
             day_div = check_macd_divergence(df)
-            
-            # 最新收盤價與成交量
             latest_price = float(df['Close'].iloc[-1])
             vol_today = float(df['Volume'].iloc[-1])
             vol_5d_avg = float(df['Volume'].iloc[-6:-1].mean())
 
-            # 成交量放大倍數 (Volume Ratio)
             vol_ratio = round(vol_today / vol_5d_avg, 2) if vol_5d_avg > 0 else 1.0
-
-            # 簡化換手率差異估算 (基於成交量變幅)
             turnover_diff = round((vol_today - vol_5d_avg) / vol_5d_avg * 100, 2) if vol_5d_avg > 0 else 0.0
 
-            # 初步篩選：有背離 或 量價異常增長
             if day_div != "無" or turnover_diff >= 20.0 or vol_ratio >= 2.0:
                 candidates.append({
                     "ticker": ticker,
@@ -148,7 +153,6 @@ def process_stocks():
     results = []
 
     if cand_tickers:
-        # 下載周線與月線數據
         week_data = yf.download(cand_tickers, period="1y", interval="1wk", group_by='ticker', threads=True, progress=False)
         month_data = yf.download(cand_tickers, period="3y", interval="1mo", group_by='ticker', threads=True, progress=False)
 
@@ -162,11 +166,9 @@ def process_stocks():
                 week_div = check_macd_divergence(df_week)
                 month_div = check_macd_divergence(df_month)
 
-                # 逐一精準獲取市值 (具備 3 重 Fallback)
                 mcap_raw = get_single_market_cap(ticker, item["price"])
                 mcap_str, mcap_num = format_market_cap(mcap_raw)
 
-                # 是否符合多重策略條件
                 has_bottom_div = (day_div == "底背離" or week_div == "底背離" or month_div == "底背離")
                 match_strategy = bool((item["turnover_diff"] >= 20.0) and (item["vol_ratio"] >= 2.0) and has_bottom_div)
                 
@@ -190,7 +192,6 @@ def process_stocks():
             except Exception as e:
                 continue
 
-    # 計算香港時間 (UTC+8)
     hkt = timezone(timedelta(hours=8))
     now_hkt = datetime.now(hkt).strftime("%Y-%m-%d %H:%M")
 
@@ -199,7 +200,6 @@ def process_stocks():
         "stocks": results
     }
 
-    # 寫入 JSON 檔案
     with open("stocks_data.json", "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
