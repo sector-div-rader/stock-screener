@@ -51,21 +51,18 @@
         <!-- 篩選與工具列 -->
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <div class="flex flex-wrap gap-3 items-center w-full lg:w-auto">
-                <!-- 搜尋 -->
                 <div class="relative min-w-[180px]">
                     <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                     <input type="text" id="searchInput" placeholder="搜尋代號..." 
                         class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
-                <!-- 快捷按鈕：底背離 / 頂背離 -->
                 <div class="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
                     <button id="btnAllDiv" onclick="setDivFilter('ALL')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-white text-gray-800 shadow-sm transition">全部背離</button>
                     <button id="btnBottomDiv" onclick="setDivFilter('BOTTOM')" class="px-3 py-1.5 text-xs font-medium rounded-md text-emerald-700 hover:bg-emerald-50 transition">🟢 僅看底背離</button>
                     <button id="btnTopDiv" onclick="setDivFilter('TOP')" class="px-3 py-1.5 text-xs font-medium rounded-md text-red-700 hover:bg-red-50 transition">🔴 僅看頂背離</button>
                 </div>
 
-                <!-- 僅看量能爆發 -->
                 <label class="inline-flex items-center cursor-pointer text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-lg border hover:bg-gray-200 transition">
                     <input type="checkbox" id="volumeFilter" class="sr-only peer">
                     <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 relative"></div>
@@ -90,6 +87,9 @@
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('price')">
                                 現價 (USD) <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
                             </th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('marketCapNum')">
+                                市值 <i id="sort-marketCapNum" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
                             <th class="py-3 px-4 text-center">週線 MACD 背離</th>
                             <th class="py-3 px-4 text-center">月線 MACD 背離</th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('turnoverDiff')">
@@ -103,7 +103,7 @@
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-gray-200 text-gray-700">
                         <tr>
-                            <td colspan="7" class="py-8 text-center text-gray-400">
+                            <td colspan="8" class="py-8 text-center text-gray-400">
                                 <i class="fa-solid fa-spinner fa-spin mr-2"></i>正在載入最新數據...
                             </td>
                         </tr>
@@ -126,7 +126,6 @@
                 if (response.ok) {
                     const rawData = await response.json();
                     
-                    // 填入數據統計
                     if (rawData.stats) {
                         document.getElementById('statTotal').innerText = rawData.stats.totalScanned || 0;
                         document.getElementById('statSuccess').innerText = rawData.stats.successCount || 0;
@@ -151,7 +150,7 @@
 
         function showErrorMessage(msg) {
             document.getElementById('tableBody').innerHTML = `
-                <tr><td colspan="7" class="py-8 text-center text-red-500 font-medium"><i class="fa-solid fa-triangle-exclamation mr-2"></i>${msg}</td></tr>`;
+                <tr><td colspan="8" class="py-8 text-center text-red-500 font-medium"><i class="fa-solid fa-triangle-exclamation mr-2"></i>${msg}</td></tr>`;
         }
 
         function renderTable(data) {
@@ -159,12 +158,11 @@
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-400">沒有符合條件的股票標的</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-gray-400">沒有符合條件的股票標的</td></tr>`;
                 document.getElementById('recordCount').innerText = 0;
                 return;
             }
 
-            // 判斷是否為手機/平板行動裝置
             const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
             data.forEach(stock => {
@@ -177,7 +175,6 @@
                 const turnoverClass = stock.turnoverDiff >= 20 ? "text-green-600 font-bold" : "text-gray-600";
                 const volumeClass = stock.volumeRatio >= 2.0 ? "text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 inline-block" : "text-gray-600";
 
-                // 手機跳轉至網頁/App，電腦喚起富途桌面 Client 程式
                 const futuLink = isMobile 
                     ? `https://www.futunn.com/hk/stock/${stock.ticker}-US`
                     : `futunn://quote/us/${stock.ticker}`;
@@ -189,6 +186,7 @@
                         </a>
                     </td>
                     <td class="py-3 px-4 text-right font-medium">$${Number(stock.price).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-right font-medium text-gray-600">${stock.marketCap || 'N/A'}</td>
                     <td class="py-3 px-4 text-center">${weekBadge}</td>
                     <td class="py-3 px-4 text-center">${monthBadge}</td>
                     <td class="py-3 px-4 text-right">
@@ -264,8 +262,8 @@
             }
 
             currentData.sort((a, b) => {
-                let valA = a[column];
-                let valB = b[column];
+                let valA = a[column] || 0;
+                let valB = b[column] || 0;
 
                 if (typeof valA === 'string') {
                     return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
