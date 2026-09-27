@@ -1,283 +1,349 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股技術面與量能篩選器</title>
+    <title>美股 MACD 背離與成交量監控看板</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 圖示 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .badge-divergence-bottom { background-color: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
-        .badge-divergence-top { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-        .badge-none { background-color: #f3f4f6; color: #6b7280; }
-        .sort-icon { font-size: 0.75rem; margin-left: 0.25rem; color: #9ca3af; }
+        .sort-icon {
+            font-size: 0.8rem;
+            margin-left: 4px;
+            color: #9ca3af;
+        }
+        .active-sort {
+            color: #2563eb;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-6">
-        <!-- 頁頭資訊 -->
-        <header class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 bg-white p-4 rounded-xl shadow-sm">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-line text-blue-600"></i> 美股技術面與爆量篩選器
-                </h1>
-                <p class="text-sm text-gray-500 mt-1">追蹤 MACD DIF 背離型態 (週/月) 與日線量能爆發條件</p>
-            </div>
-            <div class="text-xs text-gray-400 self-start md:self-end">
-                最後更新時間: <span id="lastUpdated" class="font-medium text-gray-600">--</span>
-            </div>
-        </header>
+<body class="bg-gray-100 min-h-screen font-sans text-gray-800">
 
-        <!-- 掃描數據統計卡片 -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div class="text-xs text-gray-500">總掃描股票數</div>
-                <div id="statTotal" class="text-xl font-bold text-gray-800 mt-1">0</div>
+    <!-- 頂部導航列 -->
+    <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-wide">美股 MACD 背離與量價監控</h1>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div class="text-xs text-green-600 font-medium">測試成功</div>
-                <div id="statSuccess" class="text-xl font-bold text-green-600 mt-1">0</div>
+            <div class="text-xs md:text-sm text-gray-400 mt-2 sm:mt-0">
+                更新時間：<span id="last-updated-time" class="text-gray-200 font-mono">載入中...</span>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div class="text-xs text-red-500 font-medium">測試失敗/無數據</div>
-                <div id="statFailed" class="text-xl font-bold text-red-500 mt-1">0</div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- 數據統計與狀態卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                <span class="text-gray-500 text-xs font-semibold uppercase">掃描總股票數</span>
+                <div class="text-2xl font-bold text-gray-800 mt-1" id="stat-total">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div class="text-xs text-blue-600 font-medium">符合特徵/策略總數</div>
-                <div id="statMatched" class="text-xl font-bold text-blue-600 mt-1">0</div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                <span class="text-gray-500 text-xs font-semibold uppercase">成功解析數量</span>
+                <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-success">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                <span class="text-gray-500 text-xs font-semibold uppercase">篩選出關注標的</span>
+                <div class="text-2xl font-bold text-blue-600 mt-1" id="stat-matched">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                <span class="text-gray-500 text-xs font-semibold uppercase">符合黃金策略標的</span>
+                <div class="text-2xl font-bold text-purple-600 mt-1" id="stat-strategy">0</div>
             </div>
         </div>
 
-        <!-- 篩選與工具列 -->
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div class="flex flex-wrap gap-3 items-center w-full lg:w-auto">
-                <div class="relative min-w-[180px]">
-                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="searchInput" placeholder="搜尋代號..." 
-                        class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        <!-- 篩選與搜尋工具列 -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <!-- 搜尋框 -->
+                <div class="relative w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="search-input" placeholder="搜尋代號 (例如 NVDA)" 
+                           class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           oninput="onSearchOrFilterChange()">
                 </div>
 
-                <div class="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
-                    <button id="btnAllDiv" onclick="setDivFilter('ALL')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-white text-gray-800 shadow-sm transition">全部背離</button>
-                    <button id="btnBottomDiv" onclick="setDivFilter('BOTTOM')" class="px-3 py-1.5 text-xs font-medium rounded-md text-emerald-700 hover:bg-emerald-50 transition">🟢 僅看底背離</button>
-                    <button id="btnTopDiv" onclick="setDivFilter('TOP')" class="px-3 py-1.5 text-xs font-medium rounded-md text-red-700 hover:bg-red-50 transition">🔴 僅看頂背離</button>
-                </div>
-
-                <label class="inline-flex items-center cursor-pointer text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-lg border hover:bg-gray-200 transition">
-                    <input type="checkbox" id="volumeFilter" class="sr-only peer">
-                    <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 relative"></div>
-                    <span class="ml-2 text-xs">僅看「量能爆發」</span>
-                </label>
+                <!-- 策略快速篩選器 -->
+                <select id="filter-strategy" onchange="onSearchOrFilterChange()" 
+                        class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">所有關注標的</option>
+                    <option value="matchOnly">🌟 僅顯示符合黃金策略 (放量+背離)</option>
+                    <option value="bottomDivOnly">📈 僅顯示有底背離 (周/月)</option>
+                    <option value="volSpikeOnly">🔥 僅顯示放量異動 (成交量比 ≥ 2x)</option>
+                </select>
             </div>
 
-            <div class="text-xs text-gray-500 flex items-center gap-1 self-end lg:self-center">
-                顯示 <span id="recordCount" class="font-bold text-gray-800">0</span> 筆數據
+            <div class="text-xs text-gray-500">
+                顯示 <span id="current-count" class="font-bold text-gray-700">0</span> 隻股票
             </div>
         </div>
 
-        <!-- 數據表格 -->
+        <!-- 資料表格 -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200 select-none">
-                        <tr>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider border-b border-gray-200 select-none">
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('ticker')">
-                                代號 (連結至富途) <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
+                                股票代號 <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('price')">
-                                現價 (USD) <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
+                                現價 ($) <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('marketCapNum')">
                                 市值 <i id="sort-marketCapNum" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 text-center">週線 MACD 背離</th>
+                            <th class="py-3 px-4 text-center">周線 MACD 背離</th>
                             <th class="py-3 px-4 text-center">月線 MACD 背離</th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('turnoverDiff')">
-                                日換手率 (較昨日) <i id="sort-turnoverDiff" class="fa-solid fa-sort sort-icon"></i>
+                                今日成交金額增幅 (%) <i id="sort-turnoverDiff" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volumeRatio')">
-                                日成交量 (較昨日倍數) <i id="sort-volumeRatio" class="fa-solid fa-sort sort-icon"></i>
+                                成交量比 (今日/昨日) <i id="sort-volumeRatio" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 text-center">策略符合度</th>
+                            <th class="py-3 px-4 text-center">策略匹配</th>
+                            <th class="py-3 px-4 text-center">快捷連結</th>
                         </tr>
                     </thead>
-                    <tbody id="tableBody" class="divide-y divide-gray-200 text-gray-700">
-                        <tr>
-                            <td colspan="8" class="py-8 text-center text-gray-400">
-                                <i class="fa-solid fa-spinner fa-spin mr-2"></i>正在載入最新數據...
-                            </td>
-                        </tr>
+                    <tbody id="stock-table-body" class="divide-y divide-gray-100 text-sm">
+                        <!-- 動態插入數據 -->
                     </tbody>
                 </table>
             </div>
+
+            <!-- 無資料提示 -->
+            <div id="no-data" class="hidden text-center py-12 text-gray-400">
+                <i class="fa-regular fa-folder-open text-4xl mb-3"></i>
+                <p class="text-sm">沒有找到符合條件的股票資料</p>
+            </div>
+
+            <!-- 分頁列 -->
+            <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                <div class="text-xs text-gray-500">
+                    頁次 <span id="page-num" class="font-bold">1</span> / <span id="total-pages" class="font-bold">1</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prev-btn" onclick="changePage(-1)" class="px-3 py-1 bg-white border border-gray-300 text-gray-600 rounded text-xs hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                        上一頁
+                    </button>
+                    <button id="next-btn" onclick="changePage(1)" class="px-3 py-1 bg-white border border-gray-300 text-gray-600 rounded text-xs hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                        下一頁
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
 
+    </main>
+
+    <!-- JavaScript 腳本 -->
     <script>
-        let stockData = [];
-        let currentData = [];
-        let activeDivMode = 'ALL';
-        let currentSortColumn = '';
-        let isAscending = true;
+        let rawData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const pageSize = 20;
 
-        async function loadStockData() {
+        let currentSortColumn = 'marketCapNum';
+        let currentSortOrder = 'desc'; // 'asc' 或 'desc'
+
+        // 頁面載入時抓取 JSON 資料
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchStockData();
+        });
+
+        async function fetchStockData() {
             try {
-                const response = await fetch('./stocks_data.json?t=' + new Date().getTime());
-                if (response.ok) {
-                    const rawData = await response.json();
-                    
-                    if (rawData.stats) {
-                        document.getElementById('statTotal').innerText = rawData.stats.totalScanned || 0;
-                        document.getElementById('statSuccess').innerText = rawData.stats.successCount || 0;
-                        document.getElementById('statFailed').innerText = rawData.stats.failedCount || 0;
-                        document.getElementById('statMatched').innerText = rawData.stats.matchedCount || 0;
-                        document.getElementById('lastUpdated').innerText = rawData.stats.lastUpdated || '--';
-                        stockData = rawData.stocks || [];
-                    } else {
-                        stockData = Array.isArray(rawData) ? rawData : [];
-                    }
+                const response = await fetch('stocks_data.json');
+                if (!response.ok) throw new Error('無法載入 JSON 資料');
+                
+                const data = await response.json();
+                
+                // 渲染統計資料
+                document.getElementById('last-updated-time').innerText = data.stats.lastUpdated || '未知';
+                document.getElementById('stat-total').innerText = data.stats.totalScanned?.toLocaleString() || '0';
+                document.getElementById('stat-success').innerText = data.stats.successCount?.toLocaleString() || '0';
+                document.getElementById('stat-matched').innerText = data.stats.matchedCount?.toLocaleString() || '0';
+                
+                rawData = data.stocks || [];
+                
+                // 計算符合策略的數量
+                const strategyMatches = rawData.filter(s => s.matchStrategy).length;
+                document.getElementById('stat-strategy').innerText = strategyMatches.toLocaleString();
 
-                    currentData = [...stockData];
-                    renderTable(currentData);
-                } else {
-                    showErrorMessage("找不到 stocks_data.json，請確認 Python 腳本是否已執行。");
-                }
-            } catch (error) {
-                console.error("載入失敗:", error);
-                showErrorMessage("數據載入失敗。");
+                // 初始應用搜尋與篩選
+                onSearchOrFilterChange();
+            } catch (err) {
+                console.error("載入數據錯誤:", err);
+                document.getElementById('stock-table-body').innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center py-8 text-red-500 font-medium">
+                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗，請檢查 stocks_data.json 是否正確生成。
+                        </td>
+                    </tr>
+                `;
             }
         }
 
-        function showErrorMessage(msg) {
-            document.getElementById('tableBody').innerHTML = `
-                <tr><td colspan="8" class="py-8 text-center text-red-500 font-medium"><i class="fa-solid fa-triangle-exclamation mr-2"></i>${msg}</td></tr>`;
+        // 處理篩選與搜尋
+        function onSearchOrFilterChange() {
+            const searchTxt = document.getElementById('search-input').value.trim().toUpperCase();
+            const filterVal = document.getElementById('filter-strategy').value;
+
+            filteredData = rawData.filter(item => {
+                // 代號搜尋過濾
+                const matchesSearch = item.ticker.toUpperCase().includes(searchTxt);
+                
+                // 策略類型過濾
+                let matchesFilter = true;
+                if (filterVal === 'matchOnly') {
+                    matchesFilter = item.matchStrategy === true;
+                } else if (filterVal === 'bottomDivOnly') {
+                    matchesFilter = (item.weekDiv === '底背離' || item.monthDiv === '底背離');
+                } else if (filterVal === 'volSpikeOnly') {
+                    matchesFilter = item.volumeRatio >= 2.0;
+                }
+
+                return matchesSearch && matchesFilter;
+            });
+
+            // 執行排序
+            sortData();
+
+            // 重置頁數
+            currentPage = 1;
+            renderTable();
         }
 
-        function renderTable(data) {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
+        // 表格排序邏輯
+        function sortTable(column) {
+            if (currentSortColumn === column) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = column;
+                currentSortOrder = (column === 'ticker') ? 'asc' : 'desc'; // 文字預設升冪，數字預設降冪
+            }
+            
+            updateSortIcons();
+            sortData();
+            renderTable();
+        }
 
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-gray-400">沒有符合條件的股票標的</td></tr>`;
-                document.getElementById('recordCount').innerText = 0;
+        function sortData() {
+            filteredData.sort((a, b) => {
+                let valA = a[currentSortColumn];
+                let valB = b[currentSortColumn];
+
+                if (valA === undefined || valA === null) valA = (typeof valB === 'string') ? '' : -Infinity;
+                if (valB === undefined || valB === null) valB = (typeof valA === 'string') ? '' : -Infinity;
+
+                if (typeof valA === 'string') {
+                    return currentSortOrder === 'asc' 
+                        ? valA.localeCompare(valB) 
+                        : valB.localeCompare(valA);
+                } else {
+                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                }
+            });
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.className = 'fa-solid fa-sort sort-icon';
+            });
+
+            const activeIcon = document.getElementById(`sort-${currentSortColumn}`);
+            if (activeIcon) {
+                activeIcon.className = `fa-solid fa-sort-${currentSortOrder === 'asc' ? 'up' : 'down'} sort-icon active-sort`;
+            }
+        }
+
+        // 渲染表格資料
+        function renderTable() {
+            const tbody = document.getElementById('stock-table-body');
+            const noData = document.getElementById('no-data');
+            
+            document.getElementById('current-count').innerText = filteredData.length;
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '';
+                noData.classList.remove('hidden');
+                document.getElementById('page-num').innerText = '0';
+                document.getElementById('total-pages').innerText = '0';
+                document.getElementById('prev-btn').disabled = true;
+                document.getElementById('next-btn').disabled = true;
                 return;
             }
 
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            noData.classList.add('hidden');
 
-            data.forEach(stock => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 transition-colors";
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            const startIdx = (currentPage - 1) * pageSize;
+            const pageData = filteredData.slice(startIdx, startIdx + pageSize);
 
-                const weekBadge = getDivergenceBadge(stock.weekDiv);
-                const monthBadge = getDivergenceBadge(stock.monthDiv);
+            tbody.innerHTML = pageData.map(stock => {
+                // 背離標籤樣式
+                const getDivTag = (div) => {
+                    if (div === '底背離') return `<span class="bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-md text-xs">底背離</span>`;
+                    if (div === '頂背離') return `<span class="bg-green-100 text-green-700 font-bold px-2.5 py-1 rounded-md text-xs">頂背離</span>`;
+                    return `<span class="text-gray-400 text-xs">-</span>`;
+                };
 
-                const turnoverClass = stock.turnoverDiff >= 20 ? "text-green-600 font-bold" : "text-gray-600";
-                const volumeClass = stock.volumeRatio >= 2.0 ? "text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 inline-block" : "text-gray-600";
+                // 成交金額增幅樣式
+                const turnoverDiffClass = stock.turnoverDiff >= 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold';
+                const turnoverDiffSign = stock.turnoverDiff >= 0 ? '+' : '';
 
-                const futuLink = isMobile 
-                    ? `https://www.futunn.com/hk/stock/${stock.ticker}-US`
-                    : `futunn://quote/us/${stock.ticker}`;
+                // 成交量比樣式
+                const volRatioClass = stock.volumeRatio >= 2.0 ? 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded' : 'text-gray-700';
 
-                tr.innerHTML = `
-                    <td class="py-3 px-4">
-                        <a href="${futuLink}" target="_blank" rel="noopener noreferrer" class="font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1">
-                            ${stock.ticker} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                        </a>
-                    </td>
-                    <td class="py-3 px-4 text-right font-medium">$${Number(stock.price).toFixed(2)}</td>
-                    <td class="py-3 px-4 text-right font-medium text-gray-600">${stock.marketCap || 'N/A'}</td>
-                    <td class="py-3 px-4 text-center">${weekBadge}</td>
-                    <td class="py-3 px-4 text-center">${monthBadge}</td>
-                    <td class="py-3 px-4 text-right">
-                        <div>${stock.turnover}</div>
-                        <div class="text-xs ${turnoverClass}">較昨日 ${stock.turnoverDiff >= 0 ? '+' : ''}${Number(stock.turnoverDiff).toFixed(1)}%</div>
-                    </td>
-                    <td class="py-3 px-4 text-right">
-                        <span class="${volumeClass}">${Number(stock.volumeRatio).toFixed(1)} 倍</span>
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        ${stock.matchStrategy ? 
-                            '<span class="inline-flex items-center gap-1 text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i> 符合完全條件</span>' : 
-                            '<span class="text-xs text-gray-400">未完全符合</span>'}
-                    </td>
+                return `
+                    <tr class="hover:bg-blue-50/50 transition-colors">
+                        <td class="py-3.5 px-4 font-bold text-gray-900">${stock.ticker}</td>
+                        <td class="py-3.5 px-4 text-right font-mono font-medium">${stock.price.toFixed(2)}</td>
+                        <td class="py-3.5 px-4 text-right font-mono font-semibold text-gray-700">${stock.marketCap || 'N/A'}</td>
+                        <td class="py-3.5 px-4 text-center">${getDivTag(stock.weekDiv)}</td>
+                        <td class="py-3.5 px-4 text-center">${getDivTag(stock.monthDiv)}</td>
+                        <td class="py-3.5 px-4 text-right font-mono ${turnoverDiffClass}">
+                            ${turnoverDiffSign}${stock.turnoverDiff.toFixed(1)}%
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-mono">
+                            <span class="${volRatioClass}">${stock.volumeRatio.toFixed(2)}x</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            ${stock.matchStrategy 
+                                ? `<span class="bg-purple-100 text-purple-800 text-xs px-2.5 py-1 rounded-full font-bold border border-purple-200">
+                                     <i class="fa-solid fa-star text-amber-400 mr-1"></i>符合黃金策略
+                                   </span>` 
+                                : `<span class="text-gray-400 text-xs">-</span>`}
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <a href="${stock.futuUrl}" target="_blank" rel="noopener noreferrer" 
+                               class="inline-flex items-center space-x-1 text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-2.5 py-1 rounded transition-colors">
+                                <span>富途行情</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
-            });
+            }).join('');
 
-            document.getElementById('recordCount').innerText = data.length;
+            // 更新分頁按鈕狀態
+            document.getElementById('page-num').innerText = currentPage;
+            document.getElementById('total-pages').innerText = totalPages;
+            document.getElementById('prev-btn').disabled = (currentPage === 1);
+            document.getElementById('next-btn').disabled = (currentPage === totalPages);
         }
 
-        function getDivergenceBadge(type) {
-            if (type === "底背離") return `<span class="badge-divergence-bottom px-2.5 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-arrow-trend-up mr-1"></i>底背離</span>`;
-            if (type === "頂背離") return `<span class="badge-divergence-top px-2.5 py-0.5 rounded text-xs font-semibold"><i class="fa-solid fa-arrow-trend-down mr-1"></i>頂背離</span>`;
-            return `<span class="badge-none px-2.5 py-0.5 rounded text-xs">無背離</span>`;
+        // 分頁切換
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            renderTable();
         }
-
-        function setDivFilter(mode) {
-            activeDivMode = mode;
-            
-            const btnAll = document.getElementById('btnAllDiv');
-            const btnBottom = document.getElementById('btnBottomDiv');
-            const btnTop = document.getElementById('btnTopDiv');
-
-            btnAll.className = "px-3 py-1.5 text-xs font-medium rounded-md transition " + (mode === 'ALL' ? "bg-white text-gray-800 shadow-sm" : "text-gray-600 hover:bg-gray-200");
-            btnBottom.className = "px-3 py-1.5 text-xs font-medium rounded-md transition " + (mode === 'BOTTOM' ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50");
-            btnTop.className = "px-3 py-1.5 text-xs font-medium rounded-md transition " + (mode === 'TOP' ? "bg-red-600 text-white shadow-sm" : "text-red-700 hover:bg-red-50");
-
-            filterData();
-        }
-
-        function filterData() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const volOnly = document.getElementById('volumeFilter').checked;
-
-            currentData = stockData.filter(stock => {
-                const matchSearch = stock.ticker.toLowerCase().includes(search);
-                
-                let matchDiv = true;
-                if (activeDivMode === "BOTTOM") {
-                    matchDiv = (stock.weekDiv === "底背離" || stock.monthDiv === "底背離");
-                } else if (activeDivMode === "TOP") {
-                    matchDiv = (stock.weekDiv === "頂背離" || stock.monthDiv === "頂背離");
-                }
-
-                let matchVol = true;
-                if (volOnly) {
-                    matchVol = stock.turnoverDiff >= 20 && stock.volumeRatio >= 2.0;
-                }
-
-                return matchSearch && matchDiv && matchVol;
-            });
-
-            renderTable(currentData);
-        }
-
-        function sortTable(column) {
-            if (currentSortColumn === column) {
-                isAscending = !isAscending;
-            } else {
-                currentSortColumn = column;
-                isAscending = true;
-            }
-
-            currentData.sort((a, b) => {
-                let valA = a[column] || 0;
-                let valB = b[column] || 0;
-
-                if (typeof valA === 'string') {
-                    return isAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                }
-                return isAscending ? valA - valB : valB - valA;
-            });
-
-            renderTable(currentData);
-        }
-
-        document.getElementById('searchInput').addEventListener('input', filterData);
-        document.getElementById('volumeFilter').addEventListener('change', filterData);
-
-        loadStockData();
     </script>
 </body>
 </html>
