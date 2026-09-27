@@ -70,7 +70,7 @@ def check_macd_divergence(df_kline):
 
 # 格式化市值數值 (例如：$1.5T, $250.5B, $800M)
 def format_market_cap(market_cap):
-    if not market_cap or np.isnan(market_cap):
+    if market_cap is None or np.isnan(market_cap) or market_cap <= 0:
         return "N/A", 0
     val = float(market_cap)
     if val >= 1e12:
@@ -82,6 +82,22 @@ def format_market_cap(market_cap):
     else:
         return f"${round(val, 0)}", val
 
+# 真·分批獲取市值數據（避免單隻重複請求）
+def get_batch_market_caps(batch_tickers):
+    market_caps = {}
+    try:
+        tickers_obj = yf.Tickers(' '.join(batch_tickers))
+        for symbol in batch_tickers:
+            try:
+                # 直接讀取 fast_info 緩存
+                mcap = tickers_obj.tickers[symbol].fast_info.get('market_cap', None)
+                market_caps[symbol] = mcap
+            except Exception:
+                market_caps[symbol] = None
+    except Exception:
+        pass
+    return market_caps
+
 # 3. 核心數據處理
 def process_stocks():
     tickers = get_us_stock_list()
@@ -92,7 +108,8 @@ def process_stocks():
     
     print(f"🚀 開始全美股個股掃描，共計 {total_scanned} 隻股票...")
     
-    batch_size = 200
+    # 建議將批次大小適當調小至 100，提升 API 穩定度
+    batch_size = 100
     candidates = []
 
     # 第一階段：全美股日線批次下載 (過濾價格與成交量)
@@ -101,8 +118,12 @@ def process_stocks():
         print(f"階段 1/2: [{min(i + batch_size, total_scanned)}/{total_scanned}] 檢查日線量價與市值...")
         
         try:
+            # 1. 批次下載價格數據
             data = yf.download(batch_tickers, period="3mo", interval="1d", group_by='ticker', threads=True, progress=False)
             
+            # 2. 批次一次過抓取該 Batch 的市值
+            mcap_dict = get_batch_market_caps(batch_tickers)
+
             for ticker in batch_tickers:
                 try:
                     df_day = data[ticker].dropna(how='all') if len(batch_tickers) > 1 else data.dropna(how='all')
@@ -128,9 +149,8 @@ def process_stocks():
                     # 計算日線 MACD 背離
                     day_div = check_macd_divergence(df_day)
 
-                    # 獲取市值資料
-                    stock_info = yf.Ticker(ticker)
-                    mcap_raw = stock_info.fast_info.get('market_cap', None)
+                    # 從批次字典讀取市值，不再發起獨立 HTTP 請求
+                    mcap_raw = mcap_dict.get(ticker, None)
                     mcap_str, mcap_num = format_market_cap(mcap_raw)
 
                     candidates.append({
