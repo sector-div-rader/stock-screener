@@ -86,7 +86,7 @@ def get_single_market_cap(ticker_symbol, latest_price):
 
     return None
 
-# 4. 獲取全美股上市股票名單 (自動過濾 ETF / 優先股 / 權證)
+# 4. 獲取全美股上市股票名單 (過濾 ETF / 優先股 / 權證)
 def get_all_us_stocks():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     tickers = set()
@@ -134,7 +134,7 @@ def process_stocks():
     success_count = 0
     failed_count = 0
     
-    print(f"🚀 [階段 1/2] 開始分批下載 {total_scanned} 隻全美股日線數據 (篩選條件：股價 ≥ $2.0、單日成交量 ≥ 20k、成交量放大 ≥ 2 倍 或 具 MACD 背離)...")
+    print(f"🚀 [階段 1/2] 開始分批下載 {total_scanned} 隻全美股日線數據 (條件：門檻 >$2.0、成交量 ≥ 20k、成交量放大 ≥ 2 倍 或 具 MACD 背離)...")
     
     candidates = []
     batch_size = 200
@@ -166,8 +166,6 @@ def process_stocks():
                         continue
 
                     day_div = check_macd_divergence(df)
-                    
-                    # 計算成交量（換手倍率）放大倍數：今日成交量 / 5日平均成交量
                     vol_ratio = round(vol_today / vol_5d_avg, 2) if vol_5d_avg > 0 else 1.0
 
                     # 條件 3：只要有 MACD 背離，或者換手/成交量放大 2 倍以上 (vol_ratio >= 2.0)
@@ -177,7 +175,8 @@ def process_stocks():
                             "price": round(latest_price, 2),
                             "dayDiv": day_div,
                             "vol_today": vol_today,
-                            "vol_ratio": vol_ratio
+                            "vol_ratio": vol_ratio,
+                            "vol_5d_avg": vol_5d_avg
                         })
                     success_count += 1
                 except Exception:
@@ -212,24 +211,25 @@ def process_stocks():
                 mcap_raw = get_single_market_cap(ticker, item["price"])
                 mcap_str, mcap_num = format_market_cap(mcap_raw)
 
-                # 黃金策略標籤：任一週期底背離 + 換手/成交量放大 2 倍以上 (vol_ratio >= 2.0)
+                # 黃金策略條件：任一週期底背離 + 成交量放大 ≥ 2 倍
                 has_bottom_div = (day_div == "底背離" or week_div == "底背離" or month_div == "底背離")
                 match_strategy = bool((item["vol_ratio"] >= 2.0) and has_bottom_div)
                 
                 futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
 
+                # 成交量變幅 %：計算 (今日成交量 - 5日均量) / 5日均量 * 100
+                turnover_diff = round((item["vol_today"] - item["vol_5d_avg"]) / item["vol_5d_avg"] * 100, 1) if item["vol_5d_avg"] > 0 else 0.0
+
                 results.append({
                     "ticker": ticker,
-                    "name": ticker,
-                    "price": item["price"],
+                    "price": float(item["price"]),
                     "marketCap": mcap_str,
-                    "marketCapNum": mcap_num,
+                    "marketCapNum": float(mcap_num),
                     "dayDiv": day_div,
                     "weekDiv": week_div,
                     "monthDiv": month_div,
-                    "turnover": f"{round(item['vol_today']/1000, 1)}K",  # 顯示今日成交量 (千股)
-                    "turnoverDiff": 0.0,
-                    "volumeRatio": item["vol_ratio"],                   # 換手/成交量放大倍數 (比平時大 X 倍)
+                    "turnoverDiff": float(turnover_diff),
+                    "volumeRatio": float(item["vol_ratio"]),
                     "matchStrategy": match_strategy,
                     "futuUrl": futu_url
                 })
@@ -239,13 +239,13 @@ def process_stocks():
     hkt = timezone(timedelta(hours=8))
     now_hkt = datetime.now(hkt).strftime("%Y-%m-%d %H:%M")
 
+    # 100% 精準對齊 index.html 的 JSON 結構要求
     output_data = {
         "stats": {
+            "lastUpdated": now_hkt,
             "totalScanned": total_scanned,
             "successCount": success_count,
-            "failedCount": failed_count,
-            "matchedCount": len(results),
-            "lastUpdated": now_hkt
+            "matchedCount": len(results)
         },
         "stocks": results
     }
