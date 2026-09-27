@@ -16,59 +16,76 @@
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-6">
         <!-- 頁頭資訊 -->
-        <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 bg-white p-4 rounded-xl shadow-sm">
+        <header class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 bg-white p-4 rounded-xl shadow-sm">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
                     <i class="fa-solid fa-chart-line text-blue-600"></i> 美股技術面與爆量篩選器
                 </h1>
                 <p class="text-sm text-gray-500 mt-1">追蹤 MACD DIF 背離型態 (週/月) 與日線量能爆發條件</p>
             </div>
-            <div class="flex items-center gap-2 text-xs bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
-                <i class="fa-solid fa-info-circle"></i>
-                <span>策略條件：日換手率較昨日 ≥20% 且 日成交量較昨日 ≥2倍</span>
+            <div class="text-xs text-gray-400 self-start md:self-end">
+                最後更新時間: <span id="lastUpdated" class="font-medium text-gray-600">--</span>
             </div>
         </header>
+
+        <!-- 掃描數據統計卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div class="text-xs text-gray-500">總掃描股票數</div>
+                <div id="statTotal" class="text-xl font-bold text-gray-800 mt-1">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div class="text-xs text-green-600 font-medium">測試成功</div>
+                <div id="statSuccess" class="text-xl font-bold text-green-600 mt-1">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div class="text-xs text-red-500 font-medium">測試失敗/無數據</div>
+                <div id="statFailed" class="text-xl font-bold text-red-500 mt-1">0</div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div class="text-xs text-blue-600 font-medium">符合特徵/策略總數</div>
+                <div id="statMatched" class="text-xl font-bold text-blue-600 mt-1">0</div>
+            </div>
+        </div>
 
         <!-- 篩選與工具列 -->
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <div class="flex flex-wrap gap-3 items-center w-full lg:w-auto">
-                <!-- 關鍵字搜尋 -->
-                <div class="relative min-w-[200px]">
+                <!-- 搜尋 -->
+                <div class="relative min-w-[180px]">
                     <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="searchInput" placeholder="搜尋代號 / 公司名稱..." 
-                        class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    <input type="text" id="searchInput" placeholder="搜尋代號..." 
+                        class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
 
-                <!-- 背離型態篩選 -->
-                <select id="divergenceFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="ALL">所有背離型態</option>
-                    <option value="WEEK_BOTTOM">週線：底背離 (看漲)</option>
-                    <option value="MONTH_BOTTOM">月線：底背離 (看漲)</option>
-                    <option value="BOTH_BOTTOM">週+月：雙重底背離</option>
-                    <option value="ANY_TOP">包含頂背離 (看跌)</option>
-                </select>
+                <!-- 快捷按鈕：底背離 / 頂背離 -->
+                <div class="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200">
+                    <button id="btnAllDiv" onclick="setDivFilter('ALL')" class="px-3 py-1.5 text-xs font-medium rounded-md bg-white text-gray-800 shadow-sm transition">全部背離</button>
+                    <button id="btnBottomDiv" onclick="setDivFilter('BOTTOM')" class="px-3 py-1.5 text-xs font-medium rounded-md text-emerald-700 hover:bg-emerald-50 transition">🟢 僅看底背離</button>
+                    <button id="btnTopDiv" onclick="setDivFilter('TOP')" class="px-3 py-1.5 text-xs font-medium rounded-md text-red-700 hover:bg-red-50 transition">🔴 僅看頂背離</button>
+                </div>
 
-                <!-- 僅顯示符合量能暴增標的 -->
+                <!-- 僅看量能爆發 -->
                 <label class="inline-flex items-center cursor-pointer text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-lg border hover:bg-gray-200 transition">
                     <input type="checkbox" id="volumeFilter" class="sr-only peer">
                     <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 relative"></div>
-                    <span class="ml-2">僅看符合「量能爆發」標的</span>
+                    <span class="ml-2 text-xs">僅看「量能爆發」</span>
                 </label>
             </div>
 
             <div class="text-xs text-gray-500 flex items-center gap-1 self-end lg:self-center">
-                顯示 <span id="recordCount" class="font-bold text-gray-800">0</span> / <span id="totalCount">0</span> 筆資料
+                顯示 <span id="recordCount" class="font-bold text-gray-800">0</span> 筆數據
             </div>
         </div>
 
-        <!-- 股票資料表格 -->
+        <!-- 數據表格 -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200 select-none">
                         <tr>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('ticker')">
-                                代號 <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
+                                代號 (連結至富途) <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('price')">
                                 現價 (USD) <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
@@ -99,34 +116,42 @@
     <script>
         let stockData = [];
         let currentData = [];
+        let activeDivMode = 'ALL';
         let currentSortColumn = '';
         let isAscending = true;
 
-        // 核心：從 Python 產出的 stocks_data.json 自動載入數據
         async function loadStockData() {
             try {
                 const response = await fetch('./stocks_data.json?t=' + new Date().getTime());
                 if (response.ok) {
-                    stockData = await response.json();
+                    const rawData = await response.json();
+                    
+                    // 填入數據統計
+                    if (rawData.stats) {
+                        document.getElementById('statTotal').innerText = rawData.stats.totalScanned || 0;
+                        document.getElementById('statSuccess').innerText = rawData.stats.successCount || 0;
+                        document.getElementById('statFailed').innerText = rawData.stats.failedCount || 0;
+                        document.getElementById('statMatched').innerText = rawData.stats.matchedCount || 0;
+                        document.getElementById('lastUpdated').innerText = rawData.stats.lastUpdated || '--';
+                        stockData = rawData.stocks || [];
+                    } else {
+                        stockData = Array.isArray(rawData) ? rawData : [];
+                    }
+
                     currentData = [...stockData];
                     renderTable(currentData);
                 } else {
-                    showErrorMessage("找不到 stocks_data.json 檔案，請確認 Python 腳本是否已執行產出數據。");
+                    showErrorMessage("找不到 stocks_data.json，請確認 Python 腳本是否已執行。");
                 }
             } catch (error) {
                 console.error("載入失敗:", error);
-                showErrorMessage("載入數據失敗，請確認 stocks_data.json 是否已生成。");
+                showErrorMessage("數據載入失敗。");
             }
         }
 
         function showErrorMessage(msg) {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="py-8 text-center text-red-500 font-medium">
-                        <i class="fa-solid fa-triangle-exclamation mr-2"></i>${msg}
-                    </td>
-                </tr>`;
+            document.getElementById('tableBody').innerHTML = `
+                <tr><td colspan="7" class="py-8 text-center text-red-500 font-medium"><i class="fa-solid fa-triangle-exclamation mr-2"></i>${msg}</td></tr>`;
         }
 
         function renderTable(data) {
@@ -136,9 +161,11 @@
             if (data.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-400">沒有符合條件的股票標的</td></tr>`;
                 document.getElementById('recordCount').innerText = 0;
-                document.getElementById('totalCount').innerText = stockData.length;
                 return;
             }
+
+            // 判斷是否為手機/平板行動裝置
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
             data.forEach(stock => {
                 const tr = document.createElement('tr');
@@ -150,10 +177,16 @@
                 const turnoverClass = stock.turnoverDiff >= 20 ? "text-green-600 font-bold" : "text-gray-600";
                 const volumeClass = stock.volumeRatio >= 2.0 ? "text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 inline-block" : "text-gray-600";
 
+                // 手機跳轉至網頁/App，電腦喚起富途桌面 Client 程式
+                const futuLink = isMobile 
+                    ? `https://www.futunn.com/hk/stock/${stock.ticker}-US`
+                    : `futunn://quote/us/${stock.ticker}`;
+
                 tr.innerHTML = `
                     <td class="py-3 px-4">
-                        <div class="font-bold text-gray-900">${stock.ticker}</div>
-                        <div class="text-xs text-gray-400">${stock.name || stock.ticker}</div>
+                        <a href="${futuLink}" target="_blank" rel="noopener noreferrer" class="font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1">
+                            ${stock.ticker} <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                        </a>
                     </td>
                     <td class="py-3 px-4 text-right font-medium">$${Number(stock.price).toFixed(2)}</td>
                     <td class="py-3 px-4 text-center">${weekBadge}</td>
@@ -175,7 +208,6 @@
             });
 
             document.getElementById('recordCount').innerText = data.length;
-            document.getElementById('totalCount').innerText = stockData.length;
         }
 
         function getDivergenceBadge(type) {
@@ -184,19 +216,33 @@
             return `<span class="badge-none px-2.5 py-0.5 rounded text-xs">無背離</span>`;
         }
 
+        function setDivFilter(mode) {
+            activeDivMode = mode;
+            
+            const btnAll = document.getElementById('btnAllDiv');
+            const btnBottom = document.getElementById('btnBottomDiv');
+            const btnTop = document.getElementById('btnTopDiv');
+
+            btnAll.className = "px-3 py-1.5 text-xs font-medium rounded-md transition " + (mode === 'ALL' ? "bg-white text-gray-800 shadow-sm" : "text-gray-600 hover:bg-gray-200");
+            btnBottom.className = "px-3 py-1.5 text-xs font-medium rounded-md transition " + (mode === 'BOTTOM' ? "bg-emerald-600 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50");
+            btnTop.className = "px-3 py-1.5 text-xs font-medium rounded-md transition " + (mode === 'TOP' ? "bg-red-600 text-white shadow-sm" : "text-red-700 hover:bg-red-50");
+
+            filterData();
+        }
+
         function filterData() {
             const search = document.getElementById('searchInput').value.toLowerCase();
-            const divFilter = document.getElementById('divergenceFilter').value;
             const volOnly = document.getElementById('volumeFilter').checked;
 
             currentData = stockData.filter(stock => {
-                const matchSearch = stock.ticker.toLowerCase().includes(search) || (stock.name && stock.name.toLowerCase().includes(search));
+                const matchSearch = stock.ticker.toLowerCase().includes(search);
                 
                 let matchDiv = true;
-                if (divFilter === "WEEK_BOTTOM") matchDiv = stock.weekDiv === "底背離";
-                else if (divFilter === "MONTH_BOTTOM") matchDiv = stock.monthDiv === "底背離";
-                else if (divFilter === "BOTH_BOTTOM") matchDiv = stock.weekDiv === "底背離" && stock.monthDiv === "底背離";
-                else if (divFilter === "ANY_TOP") matchDiv = stock.weekDiv === "頂背離" || stock.monthDiv === "頂背離";
+                if (activeDivMode === "BOTTOM") {
+                    matchDiv = (stock.weekDiv === "底背離" || stock.monthDiv === "底背離");
+                } else if (activeDivMode === "TOP") {
+                    matchDiv = (stock.weekDiv === "頂背離" || stock.monthDiv === "頂背離");
+                }
 
                 let matchVol = true;
                 if (volOnly) {
@@ -231,10 +277,8 @@
         }
 
         document.getElementById('searchInput').addEventListener('input', filterData);
-        document.getElementById('divergenceFilter').addEventListener('change', filterData);
         document.getElementById('volumeFilter').addEventListener('change', filterData);
 
-        // 頁面開啟時觸發載入
         loadStockData();
     </script>
 </body>
