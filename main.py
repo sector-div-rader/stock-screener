@@ -7,21 +7,28 @@ import requests
 import io
 from datetime import datetime
 
-# 1. 從 NASDAQ 官方 FTP 伺服器自動獲取 100% 完整的全美股上市股票清單 (最穩定，不需 API Key)
+# 1. 從 NASDAQ 官方 FTP 伺服器獲取全美股個股清單 (排除 ETF 與低價股)
 def get_us_stock_list():
-    print("正在從官方 FTP 獲取全美股上市股票清單...")
+    print("正在從官方 FTP 獲取全美股上市個股清單 (過濾 ETF)...")
     tickers = set()
     
     try:
-        # 下載 NASDAQ 上市股票
+        # 下載 NASDAQ 上市股票資料
         nasdaq_url = "ftp://ftp.nasdaqtrader.com/SymbolDirectory/nasdaqlisted.txt"
         df_nasdaq = pd.read_csv(nasdaq_url, sep="|")
         
-        # 下載 NYSE / AMEX 等其他交易所上市股票
+        # 下載 NYSE / AMEX 等其他交易所上市股票資料
         other_url = "ftp://ftp.nasdaqtrader.com/SymbolDirectory/otherlisted.txt"
         df_other = pd.read_csv(other_url, sep="|")
         
-        # 提取代碼
+        # 1. 過濾 NASDAQ 清單中的 ETF (ETF 欄位為 'Y' 的排除)
+        if 'ETF' in df_nasdaq.columns:
+            df_nasdaq = df_nasdaq[df_nasdaq['ETF'] != 'Y']
+            
+        # 2. 過濾 Other 清單中的 ETF (ETF 欄位為 'Y' 的排除)
+        if 'ETF' in df_other.columns:
+            df_other = df_other[df_other['ETF'] != 'Y']
+
         nasdaq_symbols = df_nasdaq['Symbol'].dropna().tolist()
         other_symbols = df_other['ACT Symbol'].dropna().tolist()
         
@@ -35,7 +42,7 @@ def get_us_stock_list():
                 and not symbol.startswith('Total')):
                 tickers.add(symbol)
                 
-        print(f"✅ 成功獲取 {len(tickers)} 隻全美股上市公司代號。")
+        print(f"✅ 成功獲取 {len(tickers)} 隻全美股上市公司個股代號 (已排除 ETF)。")
     except Exception as e:
         print(f"❌ 官方 FTP 獲取失敗: {e}，切換至備用清單...")
         fallback = [
@@ -74,7 +81,7 @@ def process_stocks():
     results = []
     total = len(tickers)
     
-    print(f"🚀 開始全美股掃描，共計 {total} 隻股票...")
+    print(f"🚀 開始全美股個股掃描，共計 {total} 隻股票...")
     
     count = 0
     for ticker in tickers:
@@ -84,15 +91,21 @@ def process_stocks():
 
         try:
             stock = yf.Ticker(ticker)
-            # 抓取日 K 線 (計算成交量與換手率)
+            # 抓取日 K 線 (計算現價、成交量與換手率)
             df_day = stock.history(period="1mo", interval="1d")
             if df_day is None or len(df_day) < 2:
                 continue
                 
+            price = round(float(df_day['Close'].iloc[-1]), 2)
+            
+            # 【新加條件 1】：排除現價低於 $2.00 美元的股票
+            if price < 2.0:
+                continue
+
             vol_today = float(df_day['Volume'].iloc[-1])
             vol_yesterday = float(df_day['Volume'].iloc[-2])
             
-            # 過濾成交量過低 (日成交量 < 50,000) 的冷門股/殭屍股，提升速度與資料品質
+            # 【過濾條件 2】：過濾日成交量過低 (< 50,000 股) 的冷門股/殭屍股
             if vol_today < 50000:
                 continue
 
@@ -105,8 +118,6 @@ def process_stocks():
             
             week_div = check_macd_divergence(df_week)
             month_div = check_macd_divergence(df_month)
-            
-            price = round(float(df_day['Close'].iloc[-1]), 2)
             
             # 強制轉換為 Python 原生 bool，防止 JSON dump 報錯
             match_strategy = bool((turnover_diff >= 20.0) and (vol_ratio >= 2.0) and (week_div == "底背離" or month_div == "底背離"))
@@ -128,7 +139,7 @@ def process_stocks():
             # 個別股票查詢失敗時自動跳過，保持程式穩定執行
             continue
             
-    print(f"✅ 全美股掃描完成！共篩選出 {len(results)} 隻符合條件/特徵的標的。")
+    print(f"✅ 全美股個股掃描完成！共篩選出 {len(results)} 隻符合條件的標的。")
 
     # 將結果輸出為 JSON 檔
     with open("stocks_data.json", "w", encoding="utf-8") as f:
