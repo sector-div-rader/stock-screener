@@ -18,7 +18,6 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans text-gray-800">
 
-    <!-- 頂部導航 -->
     <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center">
             <div class="flex items-center space-x-3">
@@ -33,7 +32,6 @@
 
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-        <!-- 統計卡片 -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                 <span class="text-gray-500 text-xs font-semibold uppercase">掃描總數</span>
@@ -57,7 +55,6 @@
             </div>
         </div>
 
-        <!-- 篩選列 -->
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex flex-wrap gap-2" id="filter-btn-group">
@@ -75,11 +72,16 @@
                     </button>
                 </div>
 
-                <div class="relative w-full sm:w-64">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="search-input" placeholder="搜尋代號 (如 NVDA)" 
-                           class="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                           oninput="onSearchOrFilterChange()">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <select id="sector-filter" onchange="onSearchOrFilterChange()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">所有行業</option>
+                    </select>
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-input" placeholder="搜尋代號" 
+                               class="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               oninput="onSearchOrFilterChange()">
+                    </div>
                 </div>
             </div>
 
@@ -88,31 +90,33 @@
             </div>
         </div>
 
-        <!-- 資料表格 -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider border-b border-gray-200 select-none">
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('ticker')">
-                                股票代號 <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
+                                代號 <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('price')">
-                                現價 ($) <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
+                                現價 <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('marketCapNum')">
                                 市值 <i id="sort-marketCapNum" class="fa-solid fa-sort sort-icon"></i>
                             </th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('sector')">
+                                行業 <i id="sort-sector" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
                             <th class="py-3 px-4 text-center">類型</th>
                             <th class="py-3 px-4 text-center">背離</th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('fromHighPct')">
-                                距 52W 高 <i id="sort-fromHighPct" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('from52wHigh')">
+                                距 52W 高 <i id="sort-from52wHigh" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('fromLowPct')">
-                                距 52W 低 <i id="sort-fromLowPct" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('from52wLow')">
+                                距 52W 低 <i id="sort-from52wLow" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('consolidationRange')">
-                                盤整波幅 <i id="sort-consolidationRange" class="fa-solid fa-sort sort-icon"></i>
+                                盤整 <i id="sort-consolidationRange" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volRatio')">
                                 量比 <i id="sort-volRatio" class="fa-solid fa-sort sort-icon"></i>
@@ -172,12 +176,23 @@
                 document.getElementById('stat-div').innerText = data.stats.divergenceCount?.toLocaleString() || '0';
 
                 rawData = data.stocks || [];
+
+                // 建立 sector 下拉選單
+                const sectors = [...new Set(rawData.map(s => s.sector).filter(Boolean))].sort();
+                const sectorSelect = document.getElementById('sector-filter');
+                sectors.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    sectorSelect.appendChild(opt);
+                });
+
                 onSearchOrFilterChange();
             } catch (err) {
                 console.error("載入錯誤:", err);
                 document.getElementById('stock-table-body').innerHTML = `
                     <tr>
-                        <td colspan="10" class="text-center py-8 text-red-500 font-medium">
+                        <td colspan="11" class="text-center py-8 text-red-500 font-medium">
                             <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗
                         </td>
                     </tr>
@@ -194,14 +209,18 @@
 
         function onSearchOrFilterChange() {
             const searchTxt = document.getElementById('search-input').value.trim().toUpperCase();
+            const sectorFilter = document.getElementById('sector-filter').value;
 
             filteredData = rawData.filter(item => {
                 const matchesSearch = item.ticker.toUpperCase().includes(searchTxt);
+                const matchesSector = (sectorFilter === 'all') || (item.sector === sectorFilter);
+
                 let matchesFilter = true;
                 if (activeFilter === 'bottomOnly') matchesFilter = (item.type === '底部轉勢');
                 else if (activeFilter === 'topOnly') matchesFilter = (item.type === '頂部轉勢');
                 else if (activeFilter === 'divOnly') matchesFilter = (item.hasDivergence === true);
-                return matchesSearch && matchesFilter;
+
+                return matchesSearch && matchesSector && matchesFilter;
             });
 
             sortData();
@@ -214,7 +233,7 @@
                 currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSortColumn = column;
-                currentSortOrder = (column === 'ticker') ? 'asc' : 'desc';
+                currentSortOrder = (column === 'ticker' || column === 'sector') ? 'asc' : 'desc';
             }
             updateSortIcons();
             sortData();
@@ -271,11 +290,18 @@
                     : `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-xs">🔴 頂部</span>`;
 
                 const divTag = stock.hasDivergence
-                    ? `<span class="text-amber-500 text-lg" title="有背離">⭐</span>`
+                    ? `<span class="text-amber-500 text-lg">⭐</span>`
                     : `<span class="text-gray-300 text-xs">-</span>`;
 
-                const fromHighClass = stock.fromHighPct <= -30 ? 'text-red-600 font-semibold' : 'text-gray-700';
-                const fromLowClass = stock.fromLowPct >= 50 ? 'text-emerald-600 font-semibold' : 'text-gray-700';
+                const f52h = stock.from52wHigh !== null && stock.from52wHigh !== undefined
+                    ? stock.from52wHigh.toFixed(1) + '%'
+                    : '-';
+                const f52l = stock.from52wLow !== null && stock.from52wLow !== undefined
+                    ? '+' + stock.from52wLow.toFixed(1) + '%'
+                    : '-';
+
+                const fromHighClass = (stock.from52wHigh !== null && stock.from52wHigh <= -30) ? 'text-red-600 font-semibold' : 'text-gray-700';
+                const fromLowClass = (stock.from52wLow !== null && stock.from52wLow >= 50) ? 'text-emerald-600 font-semibold' : 'text-gray-700';
                 const volRatioClass = stock.volRatio >= 2.0 ? 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded' : 'text-gray-700';
 
                 return `
@@ -283,22 +309,23 @@
                         <td class="py-3.5 px-4 font-bold text-gray-900">${stock.ticker}</td>
                         <td class="py-3.5 px-4 text-right font-mono font-medium">${stock.price.toFixed(2)}</td>
                         <td class="py-3.5 px-4 text-right font-mono font-semibold text-gray-700">${stock.marketCap || 'N/A'}</td>
+                        <td class="py-3.5 px-4 text-xs text-gray-600">${stock.sector || '-'}</td>
                         <td class="py-3.5 px-4 text-center">${typeTag}</td>
                         <td class="py-3.5 px-4 text-center">${divTag}</td>
-                        <td class="py-3.5 px-4 text-right font-mono ${fromHighClass}">${stock.fromHighPct.toFixed(1)}%</td>
-                        <td class="py-3.5 px-4 text-right font-mono ${fromLowClass}">+${stock.fromLowPct.toFixed(1)}%</td>
+                        <td class="py-3.5 px-4 text-right font-mono ${fromHighClass}">${f52h}</td>
+                        <td class="py-3.5 px-4 text-right font-mono ${fromLowClass}">${f52l}</td>
                         <td class="py-3.5 px-4 text-right font-mono text-gray-700">${stock.consolidationRange.toFixed(1)}%</td>
                         <td class="py-3.5 px-4 text-right font-mono">
                             <span class="${volRatioClass}">${stock.volRatio.toFixed(2)}x</span>
                         </td>
                         <td class="py-3.5 px-4 text-center space-x-1">
                             <a href="${stock.futuUrl}" target="_blank" rel="noopener noreferrer" 
-                               class="inline-flex items-center space-x-1 text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-2 py-1 rounded transition-colors">
-                                <span>富途</span>
+                               class="inline-flex items-center text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-2 py-1 rounded transition-colors">
+                                富途
                             </a>
                             <a href="${stock.tvUrl}" target="_blank" rel="noopener noreferrer" 
-                               class="inline-flex items-center space-x-1 text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium px-2 py-1 rounded transition-colors">
-                                <span>TV</span>
+                               class="inline-flex items-center text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium px-2 py-1 rounded transition-colors">
+                                TV
                             </a>
                         </td>
                     </tr>
