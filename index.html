@@ -3,20 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>美股 MACD 多週期背離與量價監控看板</title>
-    <!-- Tailwind CSS CDN -->
+    <title>美股盤整突破轉勢掃描器</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome 圖示 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sort-icon {
-            font-size: 0.8rem;
-            margin-left: 4px;
-            color: #9ca3af;
-        }
-        .active-sort {
-            color: #2563eb;
-        }
+        .sort-icon { font-size: 0.8rem; margin-left: 4px; color: #9ca3af; }
+        .active-sort { color: #2563eb; }
         .btn-filter-active {
             background-color: #2563eb !important;
             color: #ffffff !important;
@@ -26,12 +18,12 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans text-gray-800">
 
-    <!-- 頂部導航列 -->
+    <!-- 頂部導航 -->
     <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center">
             <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
-                <h1 class="text-xl font-bold tracking-wide">美股 MACD 多週期背離監控</h1>
+                <i class="fa-solid fa-arrows-spin text-blue-400 text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-wide">美股盤整突破轉勢掃描器</h1>
             </div>
             <div class="text-xs md:text-sm text-gray-400 mt-2 sm:mt-0">
                 更新時間：<span id="last-updated-time" class="text-gray-200 font-mono">載入中...</span>
@@ -41,49 +33,41 @@
 
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-        <!-- 數據統計與狀態卡片 -->
+        <!-- 統計卡片 -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                <span class="text-gray-500 text-xs font-semibold uppercase">掃描總股票數</span>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <span class="text-gray-500 text-xs font-semibold uppercase">掃描總數</span>
                 <div class="text-2xl font-bold text-gray-800 mt-1" id="stat-total">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                <span class="text-gray-500 text-xs font-semibold uppercase">成功解析數量</span>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <span class="text-gray-500 text-xs font-semibold uppercase">成功解析</span>
                 <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-success">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                <span class="text-gray-500 text-xs font-semibold uppercase">關注標的總數</span>
-                <div class="text-2xl font-bold text-blue-600 mt-1" id="stat-matched">0</div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <span class="text-gray-500 text-xs font-semibold uppercase">🟢 底部轉勢</span>
+                <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-bottom">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
-                <span class="text-gray-500 text-xs font-semibold uppercase">符合黃金策略標的</span>
-                <div class="text-2xl font-bold text-purple-600 mt-1" id="stat-strategy">0</div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <span class="text-gray-500 text-xs font-semibold uppercase">🔴 頂部轉勢</span>
+                <div class="text-2xl font-bold text-red-600 mt-1" id="stat-top">0</div>
             </div>
         </div>
 
-        <!-- 快捷週期篩選按鈕列 -->
+        <!-- 篩選列 -->
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-4">
-                <!-- 按鈕切換區 -->
                 <div class="flex flex-wrap gap-2" id="filter-btn-group">
                     <button onclick="setFilter('all', this)" class="filter-btn btn-filter-active px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
-                        全部關注標的
+                        全部
                     </button>
-                    <button onclick="setFilter('dayDivOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
-                        📅 日底背離
+                    <button onclick="setFilter('bottomOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        🟢 底部轉勢
                     </button>
-                    <button onclick="setFilter('weekDivOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
-                        📈 週底背離
-                    </button>
-                    <button onclick="setFilter('monthDivOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
-                        🚀 月底背離
-                    </button>
-                    <button onclick="setFilter('matchOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
-                        🌟 僅黃金策略 (放量+背離)
+                    <button onclick="setFilter('topOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                        🔴 頂部轉勢
                     </button>
                 </div>
 
-                <!-- 搜尋框 -->
                 <div class="relative w-full sm:w-64">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                     <input type="text" id="search-input" placeholder="搜尋代號 (如 NVDA)" 
@@ -112,32 +96,31 @@
                             <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('marketCapNum')">
                                 市值 <i id="sort-marketCapNum" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 text-center">日線 MACD</th>
-                            <th class="py-3 px-4 text-center">週線 MACD</th>
-                            <th class="py-3 px-4 text-center">月線 MACD</th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('turnoverDiff')">
-                                今日成交金額增幅 (%) <i id="sort-turnoverDiff" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 text-center">類型</th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('fromHighPct')">
+                                距 52W 高 <i id="sort-fromHighPct" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volumeRatio')">
-                                成交量比 (今/昨) <i id="sort-volumeRatio" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('fromLowPct')">
+                                距 52W 低 <i id="sort-fromLowPct" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 text-center">策略匹配</th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('consolidationRange')">
+                                盤整波幅 <i id="sort-consolidationRange" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volRatio')">
+                                量比 <i id="sort-volRatio" class="fa-solid fa-sort sort-icon"></i>
+                            </th>
                             <th class="py-3 px-4 text-center">快捷連結</th>
                         </tr>
                     </thead>
-                    <tbody id="stock-table-body" class="divide-y divide-gray-100 text-sm">
-                        <!-- 動態插入數據 -->
-                    </tbody>
+                    <tbody id="stock-table-body" class="divide-y divide-gray-100 text-sm"></tbody>
                 </table>
             </div>
 
-            <!-- 無資料提示 -->
             <div id="no-data" class="hidden text-center py-12 text-gray-400">
                 <i class="fa-regular fa-folder-open text-4xl mb-3"></i>
                 <p class="text-sm">沒有找到符合條件的股票資料</p>
             </div>
 
-            <!-- 分頁列 -->
             <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
                 <div class="text-xs text-gray-500">
                     頁次 <span id="page-num" class="font-bold">1</span> / <span id="total-pages" class="font-bold">1</span>
@@ -155,7 +138,6 @@
 
     </main>
 
-    <!-- JavaScript 腳本 -->
     <script>
         let rawData = [];
         let filteredData = [];
@@ -163,51 +145,41 @@
         const pageSize = 20;
 
         let activeFilter = 'all';
-        let currentSortColumn = 'marketCapNum';
+        let currentSortColumn = 'volRatio';
         let currentSortOrder = 'desc';
 
-        window.addEventListener('DOMContentLoaded', () => {
-            fetchStockData();
-        });
+        window.addEventListener('DOMContentLoaded', fetchStockData);
 
         async function fetchStockData() {
             try {
                 const response = await fetch('stocks_data.json');
-                if (!response.ok) throw new Error('無法載入 JSON 資料');
-                
+                if (!response.ok) throw new Error('無法載入');
                 const data = await response.json();
-                
+
                 document.getElementById('last-updated-time').innerText = data.stats.lastUpdated || '未知';
                 document.getElementById('stat-total').innerText = data.stats.totalScanned?.toLocaleString() || '0';
                 document.getElementById('stat-success').innerText = data.stats.successCount?.toLocaleString() || '0';
-                document.getElementById('stat-matched').innerText = data.stats.matchedCount?.toLocaleString() || '0';
-                
-                rawData = data.stocks || [];
-                
-                const strategyMatches = rawData.filter(s => s.matchStrategy).length;
-                document.getElementById('stat-strategy').innerText = strategyMatches.toLocaleString();
+                document.getElementById('stat-bottom').innerText = data.stats.bottomCount?.toLocaleString() || '0';
+                document.getElementById('stat-top').innerText = data.stats.topCount?.toLocaleString() || '0';
 
+                rawData = data.stocks || [];
                 onSearchOrFilterChange();
             } catch (err) {
-                console.error("載入數據錯誤:", err);
+                console.error("載入錯誤:", err);
                 document.getElementById('stock-table-body').innerHTML = `
                     <tr>
-                        <td colspan="10" class="text-center py-8 text-red-500 font-medium">
-                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗，請確認 stocks_data.json 是否正確生成。
+                        <td colspan="9" class="text-center py-8 text-red-500 font-medium">
+                            <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗
                         </td>
                     </tr>
                 `;
             }
         }
 
-        // 切換快捷按鈕
         function setFilter(filterType, element) {
             activeFilter = filterType;
-            
-            // 更新按鈕樣式
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('btn-filter-active'));
             element.classList.add('btn-filter-active');
-
             onSearchOrFilterChange();
         }
 
@@ -216,18 +188,9 @@
 
             filteredData = rawData.filter(item => {
                 const matchesSearch = item.ticker.toUpperCase().includes(searchTxt);
-                
                 let matchesFilter = true;
-                if (activeFilter === 'matchOnly') {
-                    matchesFilter = item.matchStrategy === true;
-                } else if (activeFilter === 'dayDivOnly') {
-                    matchesFilter = (item.dayDiv === '底背離');
-                } else if (activeFilter === 'weekDivOnly') {
-                    matchesFilter = (item.weekDiv === '底背離');
-                } else if (activeFilter === 'monthDivOnly') {
-                    matchesFilter = (item.monthDiv === '底背離');
-                }
-
+                if (activeFilter === 'bottomOnly') matchesFilter = (item.type === '底部轉勢');
+                else if (activeFilter === 'topOnly') matchesFilter = (item.type === '頂部轉勢');
                 return matchesSearch && matchesFilter;
             });
 
@@ -243,7 +206,6 @@
                 currentSortColumn = column;
                 currentSortOrder = (column === 'ticker') ? 'asc' : 'desc';
             }
-            
             updateSortIcons();
             sortData();
             renderTable();
@@ -253,17 +215,12 @@
             filteredData.sort((a, b) => {
                 let valA = a[currentSortColumn];
                 let valB = b[currentSortColumn];
-
                 if (valA === undefined || valA === null) valA = (typeof valB === 'string') ? '' : -Infinity;
                 if (valB === undefined || valB === null) valB = (typeof valA === 'string') ? '' : -Infinity;
-
                 if (typeof valA === 'string') {
-                    return currentSortOrder === 'asc' 
-                        ? valA.localeCompare(valB) 
-                        : valB.localeCompare(valA);
-                } else {
-                    return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+                    return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
                 }
+                return currentSortOrder === 'asc' ? valA - valB : valB - valA;
             });
         }
 
@@ -271,7 +228,6 @@
             document.querySelectorAll('.sort-icon').forEach(icon => {
                 icon.className = 'fa-solid fa-sort sort-icon';
             });
-
             const activeIcon = document.getElementById(`sort-${currentSortColumn}`);
             if (activeIcon) {
                 activeIcon.className = `fa-solid fa-sort-${currentSortOrder === 'asc' ? 'up' : 'down'} sort-icon active-sort`;
@@ -281,7 +237,6 @@
         function renderTable() {
             const tbody = document.getElementById('stock-table-body');
             const noData = document.getElementById('no-data');
-            
             document.getElementById('current-count').innerText = filteredData.length;
 
             if (filteredData.length === 0) {
@@ -301,41 +256,35 @@
             const pageData = filteredData.slice(startIdx, startIdx + pageSize);
 
             tbody.innerHTML = pageData.map(stock => {
-                const getDivTag = (div) => {
-                    if (div === '底背離') return `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-xs">底背離</span>`;
-                    if (div === '頂背離') return `<span class="bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded text-xs">頂背離</span>`;
-                    return `<span class="text-gray-400 text-xs">-</span>`;
-                };
+                const typeTag = stock.type === '底部轉勢'
+                    ? `<span class="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded text-xs">🟢 底部</span>`
+                    : `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-xs">🔴 頂部</span>`;
 
-                const turnoverDiffClass = stock.turnoverDiff >= 0 ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold';
-                const turnoverDiffSign = stock.turnoverDiff >= 0 ? '+' : '';
-                const volRatioClass = stock.volumeRatio >= 2.0 ? 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded' : 'text-gray-700';
+                const fromHighClass = stock.fromHighPct <= -30 ? 'text-red-600 font-semibold' : 'text-gray-700';
+                const fromLowClass = stock.fromLowPct >= 50 ? 'text-emerald-600 font-semibold' : 'text-gray-700';
+                const volRatioClass = stock.volRatio >= 2.0 ? 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded' : 'text-gray-700';
 
                 return `
                     <tr class="hover:bg-blue-50/50 transition-colors">
                         <td class="py-3.5 px-4 font-bold text-gray-900">${stock.ticker}</td>
                         <td class="py-3.5 px-4 text-right font-mono font-medium">${stock.price.toFixed(2)}</td>
                         <td class="py-3.5 px-4 text-right font-mono font-semibold text-gray-700">${stock.marketCap || 'N/A'}</td>
-                        <td class="py-3.5 px-4 text-center">${getDivTag(stock.dayDiv)}</td>
-                        <td class="py-3.5 px-4 text-center">${getDivTag(stock.weekDiv)}</td>
-                        <td class="py-3.5 px-4 text-center">${getDivTag(stock.monthDiv)}</td>
-                        <td class="py-3.5 px-4 text-right font-mono ${turnoverDiffClass}">
-                            ${turnoverDiffSign}${stock.turnoverDiff.toFixed(1)}%
-                        </td>
+                        <td class="py-3.5 px-4 text-center">${typeTag}</td>
+                        <td class="py-3.5 px-4 text-right font-mono ${fromHighClass}">${stock.fromHighPct.toFixed(1)}%</td>
+                        <td class="py-3.5 px-4 text-right font-mono ${fromLowClass}">+${stock.fromLowPct.toFixed(1)}%</td>
+                        <td class="py-3.5 px-4 text-right font-mono text-gray-700">${stock.consolidationRange.toFixed(1)}%</td>
                         <td class="py-3.5 px-4 text-right font-mono">
-                            <span class="${volRatioClass}">${stock.volumeRatio.toFixed(2)}x</span>
+                            <span class="${volRatioClass}">${stock.volRatio.toFixed(2)}x</span>
                         </td>
-                        <td class="py-3.5 px-4 text-center">
-                            ${stock.matchStrategy 
-                                ? `<span class="bg-purple-100 text-purple-800 text-xs px-2.5 py-1 rounded-full font-bold border border-purple-200">
-                                     <i class="fa-solid fa-star text-amber-400 mr-1"></i>符合黃金策略
-                                   </span>` 
-                                : `<span class="text-gray-400 text-xs">-</span>`}
-                        </td>
-                        <td class="py-3.5 px-4 text-center">
+                        <td class="py-3.5 px-4 text-center space-x-1">
                             <a href="${stock.futuUrl}" target="_blank" rel="noopener noreferrer" 
-                               class="inline-flex items-center space-x-1 text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-2.5 py-1 rounded transition-colors">
-                                <span>富途行情</span>
+                               class="inline-flex items-center space-x-1 text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-2 py-1 rounded transition-colors">
+                                <span>富途</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                            <a href="${stock.tvUrl}" target="_blank" rel="noopener noreferrer" 
+                               class="inline-flex items-center space-x-1 text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium px-2 py-1 rounded transition-colors">
+                                <span>TV</span>
                                 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                             </a>
                         </td>
