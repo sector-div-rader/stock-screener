@@ -1,10 +1,9 @@
-# main.py - 美股盤整突破轉勢掃描器 V21.0
+# main.py - 美股盤整突破轉勢掃描器 V21.1
 # ============================================
-# V21.0 改動：
-#   1. 數據源：180d（唔用 1y）
-#   2. 兩階段：180d 快篩 → 180d 詳細 → info 攞 52W
-#   3. 加 sector（行業）
-#   4. 加 info 攞 52W / 市值
+# V21.1 改動（相對 V21.0）：
+#   1. 階段 3 分兩批（避免 rate limit）
+#   2. 加 fallback（info 失敗時用 180d）
+#   3. 每批之間休息 30 秒
 # ============================================
 
 import yfinance as yf
@@ -23,9 +22,9 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 # ==================== 參數 ====================
 
 BOTTOM_PARAMS = {
-    'from_high_pct': -15,      # 距 52 週高位跌 15%
+    'from_high_pct': -15,
     'consolidation_days': 30,
-    'consolidation_range': 20, # 盤整波幅 < 20%
+    'consolidation_range': 20,
     'volume_ratio': 1.5,
 }
 
@@ -40,6 +39,10 @@ BATCH_SIZE = 30
 BATCH_DELAY = 0.5
 REST_EVERY = 500
 REST_DURATION = 15
+
+# 階段 3 參數
+STAGE3_DELAY = 1.5       # 每隻之間等幾秒
+STAGE3_REST = 30         # 兩批之間休息幾秒
 
 # ==================== 市值 ====================
 
@@ -154,7 +157,6 @@ def has_pivot_divergence(df, direction='bottom'):
 # ==================== 階段 1：180d 快篩 ====================
 
 def stage1_filter(ticker, df):
-    """寬鬆快篩，唔要錯殺"""
     if df is None or len(df) < 100:
         return None
 
@@ -166,7 +168,6 @@ def stage1_filter(ticker, df):
     if vol_today < 20000:
         return None
 
-    # 寬鬆條件：成交量放大 ≥ 1.2x
     vol_avg = float(df['Volume'].tail(20).mean())
     vol_ratio = vol_today / vol_avg if vol_avg > 0 else 0
     if vol_ratio < 1.2:
@@ -176,39 +177,33 @@ def stage1_filter(ticker, df):
         'ticker': ticker,
         'price': current,
         'vol_ratio': vol_ratio,
-        'df': df,   # 保留 df，階段 2 用
+        'df': df,
     }
 
 
 # ==================== 階段 2：180d 詳細分析 ====================
 
 def stage2_screen(candidate):
-    """嚴格精篩"""
     ticker = candidate['ticker']
     df = candidate['df']
     current = candidate['price']
     vol_ratio = candidate['vol_ratio']
 
-    # 盤整
     cons = check_consolidation(df, days=30)
     if not cons:
         return None
     if cons['range_pct'] >= BOTTOM_PARAMS['consolidation_range']:
         return None
 
-    # 成交量
     if vol_ratio < BOTTOM_PARAMS['volume_ratio']:
         return None
 
-    # DIF
     dif, _, _ = calculate_macd(df['Close'])
     dif_now = float(dif.iloc[-1])
     dif_prev = float(dif.iloc[-2])
 
-    # 判斷類型
     result = None
 
-    # 底部轉勢（用 180d 高位代替 52 週）
     high_180d = float(df['High'].max())
     from_high = (current - high_180d) / high_180d * 100
 
@@ -218,13 +213,14 @@ def stage2_screen(candidate):
         result = {
             'type': '底部轉勢',
             'hasDivergence': has_div,
-            'from_high_pct': round(from_high, 1),
-            'consolidation_range': cons['range_pct'],
-            'vol_ratio': vol_ratio,
-            'macd_dif': round(dif_now, 4),
+            'fromHighPct': round(from_high, 1),
+            'consolidationRange': cons['range_pct'],
+            'volRatio': vol_ratio,
+            'macdDif': round(dif_now, 4),
+            'price': round(current, 2),
+            'ticker': ticker,
         }
 
-    # 頂部轉勢
     low_180d = float(df['Low'].min())
     from_low = (current - low_180d) / low_180d * 100
 
@@ -234,52 +230,41 @@ def stage2_screen(candidate):
         result = {
             'type': '頂部轉勢',
             'hasDivergence': has_div,
-            'from_low_pct': round(from_low, 1),
-            'consolidation_range': cons['range_pct'],
-            'vol_ratio': vol_ratio,
-            'macd_dif': round(dif_now, 4),
+            'fromLowPct': round(from_low, 1),
+            'consolidationRange': cons['range_pct'],
+            'volRatio': vol_ratio,
+            'macdDif': round(dif_now, 4),
+            'price': round(current, 2),
+            'ticker': ticker,
         }
 
-    if not result:
-        return None
-
-    result['ticker'] = ticker
-    result['price'] = round(current, 2)
     return result
 
 
-# ==================== 階段 3：info 攞 52W + 市值 + sector ====================
+# ==================== 階段 3：info 攞 52W + 市值 ====================
 
 def stage3_enrich(stock):
-    """用 info 攞 52W / 市值 / sector"""
     ticker = stock['ticker']
+    current = stock['price']
+
+    info_ok = False
     try:
         info = yf.Ticker(ticker).info
+        high_52w = info.get('fiftyTwoWeekHigh')
+        low_52w = info.get('fiftyTwoWeekLow')
+        market_cap = info.get('marketCap')
+        sector = info.get('sector')
 
-        high_52w = info.get('fiftyTwoWeekHigh', None)
-        low_52w = info.get('fiftyTwoWeekLow', None)
-        market_cap = info.get('marketCap', None)
-        sector = info.get('sector', None)
-
-        current = stock['price']
-
-        # 計算距 52W 高/低
-        if high_52w and current:
+        if high_52w and low_52w:
             stock['from52wHigh'] = round((current - high_52w) / high_52w * 100, 1)
-        else:
-            stock['from52wHigh'] = None
-
-        if low_52w and current:
             stock['from52wLow'] = round((current - low_52w) / low_52w * 100, 1)
-        else:
-            stock['from52wLow'] = None
+            info_ok = True
 
         mcap_str, mcap_num = format_market_cap(market_cap)
         stock['marketCap'] = mcap_str
         stock['marketCapNum'] = float(mcap_num)
-        stock['sector'] = sector if sector else 'Unknown'
+        stock['sector'] = sector if sector else '-'
 
-        # 用 52W 重新判斷（更準）
         if high_52w and stock['type'] == '底部轉勢':
             stock['fromHighPct'] = stock['from52wHigh']
         if low_52w and stock['type'] == '頂部轉勢':
@@ -287,19 +272,18 @@ def stage3_enrich(stock):
 
     except Exception as e:
         print(f"  ⚠️ {ticker} info 失敗: {e}")
+
+    # Fallback
+    if not info_ok:
+        stock['from52wHigh'] = stock.get('fromHighPct')
+        stock['from52wLow'] = stock.get('fromLowPct')
         stock['marketCap'] = 'N/A'
         stock['marketCapNum'] = 0
-        stock['sector'] = 'Unknown'
-        stock['from52wHigh'] = None
-        stock['from52wLow'] = None
+        stock['sector'] = '-'
 
-    # 加連結
     stock['futuUrl'] = f"https://www.futunn.com/hk/stock/{ticker}-US"
     stock['tvUrl'] = f"https://www.tradingview.com/symbols/{ticker}/"
-
-    # 移除 df（唔需要輸出）
     stock.pop('df', None)
-
     return stock
 
 
@@ -314,7 +298,7 @@ def process_stocks():
     print(f"🚀 [階段 1/3] 下載 {total_scanned} 隻 180d 日線數據...")
     print(f"   Batch: {BATCH_SIZE}, Delay: {BATCH_DELAY}s, Rest: {REST_EVERY}")
 
-    # ===== 階段 1：快篩 =====
+    # ===== 階段 1 =====
     stage1_candidates = []
 
     for i in range(0, total_scanned, BATCH_SIZE):
@@ -360,7 +344,7 @@ def process_stocks():
 
     print(f"✅ 階段 1 完成！候選 {len(stage1_candidates)} 隻")
 
-    # ===== 階段 2：詳細分析 =====
+    # ===== 階段 2 =====
     print(f"🚀 [階段 2/3] 詳細分析 {len(stage1_candidates)} 隻...")
 
     stage2_candidates = []
@@ -374,14 +358,35 @@ def process_stocks():
 
     print(f"✅ 階段 2 完成！候選 {len(stage2_candidates)} 隻")
 
-    # ===== 階段 3：info 攞 52W + 市值 =====
-    print(f"🚀 [階段 3/3] 用 info 攞 52W + 市值（{len(stage2_candidates)} 隻）...")
+    # ===== 階段 3：分兩批 =====
+    total_candidates = len(stage2_candidates)
+    print(f"🚀 [階段 3/3] 用 info 攞 52W + 市值（{total_candidates} 隻，分兩批）...")
 
     results = []
-    for stock in stage2_candidates:
+    half = total_candidates // 2
+
+    # 第一批
+    print(f"   📦 第一批：{half} 隻")
+    for i, stock in enumerate(stage2_candidates[:half]):
         enriched = stage3_enrich(stock)
         results.append(enriched)
-        time.sleep(0.3)
+        time.sleep(STAGE3_DELAY)
+        if (i + 1) % 5 == 0:
+            print(f"      進度：{i+1}/{half}")
+
+    # 中間休息
+    if half > 0 and total_candidates - half > 0:
+        print(f"   ⏸️ 休息 {STAGE3_REST} 秒（避免 rate limit）")
+        time.sleep(STAGE3_REST)
+
+    # 第二批
+    print(f"   📦 第二批：{total_candidates - half} 隻")
+    for i, stock in enumerate(stage2_candidates[half:]):
+        enriched = stage3_enrich(stock)
+        results.append(enriched)
+        time.sleep(STAGE3_DELAY)
+        if (i + 1) % 5 == 0:
+            print(f"      進度：{i+1}/{total_candidates - half}")
 
     # 排序
     results.sort(key=lambda x: (
