@@ -1,8 +1,9 @@
-# main.py - 美股盤整突破轉勢掃描器 V20.0
+# main.py - 美股盤整突破轉勢掃描器 V20.1
 # ============================================
-# 目標：搵「盤整突破 + 轉勢」嘅股票
-#   - 情況 A：底部轉勢（跌到低點 + 盤整 + 突破向上）
-#   - 情況 B：頂部轉勢（升到高位 + 盤整 + 突破向下）
+# V20.1 改動（相對 V20.0）：
+#   1. 放寬參數：-30% → -20%、12% → 15%、2.0x → 1.5x
+#   2. 「背離」改成可選（有 ⭐，冇普通）
+#   3. 修正：加 hasDivergence 欄位
 # ============================================
 
 import yfinance as yf
@@ -11,27 +12,29 @@ import numpy as np
 import requests
 import json
 import time
+import logging
 from datetime import datetime, timezone, timedelta
 from scipy.signal import find_peaks
 
 yf.set_tz_cache_location("/tmp/yf_cache")
+logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
-# ==================== 參數 ====================
+# ==================== 參數（放寬版）====================
 
 # 底部轉勢
 BOTTOM_PARAMS = {
-    'from_high_pct': -30,      # 距 52 週高位跌 ≥ 30%
-    'consolidation_days': 30,  # 盤整日數
-    'consolidation_range': 12, # 盤整波幅 < 12%
-    'volume_ratio': 2.0,       # 成交量放大 ≥ 2x
+    'from_high_pct': -20,      # 距 52 週高位跌 ≥ 20%（放寬）
+    'consolidation_days': 30,
+    'consolidation_range': 15, # 盤整波幅 < 15%（放寬）
+    'volume_ratio': 1.5,       # 成交量放大 ≥ 1.5x（放寬）
 }
 
 # 頂部轉勢
 TOP_PARAMS = {
     'from_low_pct': 50,        # 距 52 週低位升 ≥ 50%
     'consolidation_days': 30,
-    'consolidation_range': 12,
-    'volume_ratio': 2.0,
+    'consolidation_range': 15, # 放寬
+    'volume_ratio': 1.5,       # 放寬
 }
 
 # ==================== 市值 ====================
@@ -51,7 +54,6 @@ def format_market_cap(market_cap):
 
 
 def get_market_cap(ticker, price):
-    """簡化版：只用 yfinance fast_info"""
     try:
         t = yf.Ticker(ticker)
         info = t.fast_info
@@ -118,7 +120,6 @@ def check_52w_position(df):
 
 
 def check_consolidation(df, days=30):
-    """檢查最近 days 日係咪盤整"""
     if len(df) < days + 5:
         return None
     recent = df.tail(days)
@@ -134,7 +135,7 @@ def check_consolidation(df, days=30):
     }
 
 
-def check_volume_breakout(df, days=30, ratio=2.0):
+def check_volume_breakout(df, days=30, ratio=1.5):
     if len(df) < days + 2:
         return None
     vol_today = float(df['Volume'].iloc[-1])
@@ -150,18 +151,13 @@ def check_volume_breakout(df, days=30, ratio=2.0):
 
 
 def has_pivot_divergence(df, direction='bottom'):
-    """
-    Pivot-to-pivot 背離
-      direction='bottom'：搵底背離
-      direction='top'：搵頂背離
-    """
+    """Pivot-to-pivot 背離（可選加分）"""
     if len(df) < 60:
         return False
 
     close = df['Close']
     dif, _, _ = calculate_macd(close)
 
-    # 搵 pivot（用價格）
     prominence = close.mean() * 2.0 / 100
     distance = 5
 
@@ -173,15 +169,12 @@ def has_pivot_divergence(df, direction='bottom'):
     if len(pivots) < 2:
         return False
 
-    # 最近兩個 pivot
     p1, p2 = int(pivots[-2]), int(pivots[-1])
 
     if direction == 'bottom':
-        # 價創新低 + 指標唔跟
         if close.iloc[p2] < close.iloc[p1] and dif.iloc[p2] > dif.iloc[p1]:
             return True
     else:
-        # 價創新高 + 指標唔跟
         if close.iloc[p2] > close.iloc[p1] and dif.iloc[p2] < dif.iloc[p1]:
             return True
 
@@ -191,43 +184,44 @@ def has_pivot_divergence(df, direction='bottom'):
 # ==================== 主篩選邏輯 ====================
 
 def screen_stock(ticker, df):
-    """篩選單一股票"""
     if df is None or len(df) < 252:
         return None
 
     current = float(df['Close'].iloc[-1])
 
-    # 1. 52 週位置
+    # 52 週位置
     pos = check_52w_position(df)
     if not pos:
         return None
 
-    # 2. 盤整檢測
+    # 盤整檢測
     cons = check_consolidation(df, days=30)
     if not cons:
         return None
 
-    # 3. 成交量
-    vol = check_volume_breakout(df, days=30, ratio=2.0)
+    # 成交量
+    vol = check_volume_breakout(df, days=30, ratio=1.5)
     if not vol:
         return None
 
-    # 4. MACD 動能
+    # MACD 動能
     dif, _, _ = calculate_macd(df['Close'])
     dif_now = float(dif.iloc[-1])
     dif_prev = float(dif.iloc[-2])
 
-    # 5. 判斷類型
     result = None
 
     # 底部轉勢
     if (pos['from_high_pct'] <= BOTTOM_PARAMS['from_high_pct']
         and cons['range_pct'] < BOTTOM_PARAMS['consolidation_range']
         and vol['vol_ratio'] >= BOTTOM_PARAMS['volume_ratio']
-        and dif_now > dif_prev
-        and has_pivot_divergence(df, 'bottom')):
+        and dif_now > dif_prev):
+
+        has_div = has_pivot_divergence(df, 'bottom')
+
         result = {
             'type': '底部轉勢',
+            'hasDivergence': has_div,
             'from_high_pct': pos['from_high_pct'],
             'from_low_pct': pos['from_low_pct'],
             'consolidation_range': cons['range_pct'],
@@ -240,10 +234,13 @@ def screen_stock(ticker, df):
     elif (pos['from_low_pct'] >= TOP_PARAMS['from_low_pct']
         and cons['range_pct'] < TOP_PARAMS['consolidation_range']
         and vol['vol_ratio'] >= TOP_PARAMS['volume_ratio']
-        and dif_now < dif_prev
-        and has_pivot_divergence(df, 'top')):
+        and dif_now < dif_prev):
+
+        has_div = has_pivot_divergence(df, 'top')
+
         result = {
             'type': '頂部轉勢',
+            'hasDivergence': has_div,
             'from_high_pct': pos['from_high_pct'],
             'from_low_pct': pos['from_low_pct'],
             'consolidation_range': cons['range_pct'],
@@ -339,6 +336,7 @@ def process_stocks():
             'marketCap': mcap_str,
             'marketCapNum': float(mcap_num),
             'type': c['type'],
+            'hasDivergence': c['hasDivergence'],
             'fromHighPct': c['from_high_pct'],
             'fromLowPct': c['from_low_pct'],
             'consolidationRange': c['consolidation_range'],
@@ -349,8 +347,9 @@ def process_stocks():
             'tvUrl': tradingview_url,
         })
 
-    # 排序：按類型 + 量比
+    # 排序：有背離優先 + 量比高
     results.sort(key=lambda x: (
+        0 if x['hasDivergence'] else 1,
         0 if x['type'] == '底部轉勢' else 1,
         -x['volRatio']
     ))
@@ -360,6 +359,7 @@ def process_stocks():
 
     bottom_count = sum(1 for r in results if r['type'] == '底部轉勢')
     top_count = sum(1 for r in results if r['type'] == '頂部轉勢')
+    div_count = sum(1 for r in results if r['hasDivergence'])
 
     output = {
         "stats": {
@@ -368,6 +368,7 @@ def process_stocks():
             "successCount": success_count,
             "bottomCount": bottom_count,
             "topCount": top_count,
+            "divergenceCount": div_count,
             "matchedCount": len(results),
         },
         "stocks": results
@@ -376,7 +377,7 @@ def process_stocks():
     with open("stocks_data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"🎉 完成！底部 {bottom_count} 隻、頂部 {top_count} 隻")
+    print(f"🎉 完成！底部 {bottom_count} 隻、頂部 {top_count} 隻（有背離 {div_count} 隻）")
     print(f"   總共 {len(results)} 隻，更新時間：{now_hkt}")
 
 
