@@ -16,7 +16,8 @@ jobs:
     steps:
       - name: 檢出程式碼
         uses: actions/checkout@v4
-
+      - name: 診斷
+        run: python diag.py
       - name: 設定 Python 環境
         uses: actions/setup-python@v5
         with:
