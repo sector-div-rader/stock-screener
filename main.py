@@ -1,9 +1,9 @@
-# main.py - 美股盤整突破轉勢掃描器 V20.1
+# main.py - 美股盤整突破轉勢掃描器 V20.3
 # ============================================
-# V20.1 改動（相對 V20.0）：
-#   1. 放寬參數：-30% → -20%、12% → 15%、2.0x → 1.5x
-#   2. 「背離」改成可選（有 ⭐，冇普通）
-#   3. 修正：加 hasDivergence 欄位
+# V20.3 改動（相對 V20.2）：
+#   1. batch_size: 100 → 30
+#   2. 每次 batch 之間 delay 1 秒
+#   3. 每 500 隻停 30 秒（避免被封）
 # ============================================
 
 import yfinance as yf
@@ -19,23 +19,27 @@ from scipy.signal import find_peaks
 yf.set_tz_cache_location("/tmp/yf_cache")
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
-# ==================== 參數（放寬版）====================
+# ==================== 參數 ====================
 
-# 底部轉勢
 BOTTOM_PARAMS = {
-    'from_high_pct': -20,      # 距 52 週高位跌 ≥ 20%（放寬）
+    'from_high_pct': -10,
     'consolidation_days': 30,
-    'consolidation_range': 15, # 盤整波幅 < 15%（放寬）
-    'volume_ratio': 1.5,       # 成交量放大 ≥ 1.5x（放寬）
+    'consolidation_range': 25,
+    'volume_ratio': 1.5,
 }
 
-# 頂部轉勢
 TOP_PARAMS = {
-    'from_low_pct': 50,        # 距 52 週低位升 ≥ 50%
+    'from_low_pct': 50,
     'consolidation_days': 30,
-    'consolidation_range': 15, # 放寬
-    'volume_ratio': 1.5,       # 放寬
+    'consolidation_range': 25,
+    'volume_ratio': 1.5,
 }
+
+# ★ 新增：下載參數
+BATCH_SIZE = 30          # 每次 batch 幾多隻
+BATCH_DELAY = 1          # 每次 batch 之間等幾秒
+REST_EVERY = 500         # 每幾多隻停一次
+REST_DURATION = 30       # 停幾秒
 
 # ==================== 市值 ====================
 
@@ -87,7 +91,7 @@ def get_all_us_stocks():
         pass
 
     if not tickers:
-        tickers = {"AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC"}
+        tickers = {"AAPL", "MSFT", "NVDA"}
 
     return sorted(list(tickers))
 
@@ -151,13 +155,10 @@ def check_volume_breakout(df, days=30, ratio=1.5):
 
 
 def has_pivot_divergence(df, direction='bottom'):
-    """Pivot-to-pivot 背離（可選加分）"""
     if len(df) < 60:
         return False
-
     close = df['Close']
     dif, _, _ = calculate_macd(close)
-
     prominence = close.mean() * 2.0 / 100
     distance = 5
 
@@ -181,7 +182,7 @@ def has_pivot_divergence(df, direction='bottom'):
     return False
 
 
-# ==================== 主篩選邏輯 ====================
+# ==================== 篩選 ====================
 
 def screen_stock(ticker, df):
     if df is None or len(df) < 252:
@@ -189,36 +190,30 @@ def screen_stock(ticker, df):
 
     current = float(df['Close'].iloc[-1])
 
-    # 52 週位置
     pos = check_52w_position(df)
     if not pos:
         return None
 
-    # 盤整檢測
     cons = check_consolidation(df, days=30)
     if not cons:
         return None
 
-    # 成交量
     vol = check_volume_breakout(df, days=30, ratio=1.5)
     if not vol:
         return None
 
-    # MACD 動能
     dif, _, _ = calculate_macd(df['Close'])
     dif_now = float(dif.iloc[-1])
     dif_prev = float(dif.iloc[-2])
 
     result = None
 
-    # 底部轉勢
     if (pos['from_high_pct'] <= BOTTOM_PARAMS['from_high_pct']
         and cons['range_pct'] < BOTTOM_PARAMS['consolidation_range']
         and vol['vol_ratio'] >= BOTTOM_PARAMS['volume_ratio']
         and dif_now > dif_prev):
 
         has_div = has_pivot_divergence(df, 'bottom')
-
         result = {
             'type': '底部轉勢',
             'hasDivergence': has_div,
@@ -230,14 +225,12 @@ def screen_stock(ticker, df):
             'macd_dif': round(dif_now, 4),
         }
 
-    # 頂部轉勢
     elif (pos['from_low_pct'] >= TOP_PARAMS['from_low_pct']
         and cons['range_pct'] < TOP_PARAMS['consolidation_range']
         and vol['vol_ratio'] >= TOP_PARAMS['volume_ratio']
         and dif_now < dif_prev):
 
         has_div = has_pivot_divergence(df, 'top')
-
         result = {
             'type': '頂部轉勢',
             'hasDivergence': has_div,
@@ -266,12 +259,12 @@ def process_stocks():
     failed_count = 0
 
     print(f"🚀 [階段 1/2] 下載 {total_scanned} 隻日線數據（252 日）...")
+    print(f"   Batch size: {BATCH_SIZE}, Delay: {BATCH_DELAY}s, Rest every {REST_EVERY}")
 
     candidates = []
-    batch_size = 100
 
-    for i in range(0, total_scanned, batch_size):
-        batch = tickers[i:i + batch_size]
+    for i in range(0, total_scanned, BATCH_SIZE):
+        batch = tickers[i:i + BATCH_SIZE]
         try:
             daily_data = yf.download(batch, period="1y", interval="1d",
                                       group_by='ticker', threads=True, progress=False)
@@ -311,13 +304,21 @@ def process_stocks():
         except Exception as e:
             print(f"⚠️ Batch {i} 失敗: {e}")
             failed_count += len(batch)
-            continue
 
+        # 每 500 隻停 30 秒
+        if i > 0 and i % REST_EVERY == 0:
+            print(f"  ⏸️ 進度 {i}/{total_scanned}，休息 {REST_DURATION} 秒（避免被封）")
+            time.sleep(REST_DURATION)
+        else:
+            # 每次 batch 之間等 1 秒
+            time.sleep(BATCH_DELAY)
+
+        # 每 1000 隻 print 進度
         if i % 1000 == 0:
-            print(f"  進度：{i}/{total_scanned}，候選 {len(candidates)} 隻")
-        time.sleep(0.1)
+            print(f"  進度：{i}/{total_scanned}，候選 {len(candidates)} 隻，成功 {success_count}，失敗 {failed_count}")
 
     print(f"✅ 階段 1 完成！候選 {len(candidates)} 隻")
+    print(f"   成功：{success_count}，失敗：{failed_count}")
 
     print("🚀 [階段 2/2] 下載市值...")
     results = []
@@ -347,7 +348,6 @@ def process_stocks():
             'tvUrl': tradingview_url,
         })
 
-    # 排序：有背離優先 + 量比高
     results.sort(key=lambda x: (
         0 if x['hasDivergence'] else 1,
         0 if x['type'] == '底部轉勢' else 1,
