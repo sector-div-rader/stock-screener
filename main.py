@@ -1,3 +1,10 @@
+# main.py - 美股盤整突破轉勢掃描器 V20.0
+# ============================================
+# 目標：搵「盤整突破 + 轉勢」嘅股票
+#   - 情況 A：底部轉勢（跌到低點 + 盤整 + 突破向上）
+#   - 情況 B：頂部轉勢（升到高位 + 盤整 + 突破向下）
+# ============================================
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -5,41 +12,32 @@ import requests
 import json
 import time
 from datetime import datetime, timezone, timedelta
+from scipy.signal import find_peaks
 
-# 關閉 yfinance 快取以避免 GitHub Actions 出現 database is locked 錯誤
 yf.set_tz_cache_location("/tmp/yf_cache")
 
-# 1. 計算 MACD 及檢測背離 (DIF 快線設定為 5)
-def check_macd_divergence(df):
-    if df is None or len(df) < 35:
-        return "無"
-    
-    close = df['Close'].squeeze()
-    
-    # 計算 MACD (5, 26, 9)
-    exp1 = close.ewm(span=5, adjust=False).mean()
-    exp2 = close.ewm(span=26, adjust=False).mean()
-    macd = exp1 - exp2
-    signal = macd.ewm(span=9, adjust=False).mean()
-    hist = macd - signal
+# ==================== 參數 ====================
 
-    # 取得最新 3 根 K 線數據
-    h0, h1, h2 = hist.iloc[-1], hist.iloc[-2], hist.iloc[-3]
-    c0, c1, c2 = close.iloc[-1], close.iloc[-2], close.iloc[-3]
+# 底部轉勢
+BOTTOM_PARAMS = {
+    'from_high_pct': -30,      # 距 52 週高位跌 ≥ 30%
+    'consolidation_days': 30,  # 盤整日數
+    'consolidation_range': 12, # 盤整波幅 < 12%
+    'volume_ratio': 2.0,       # 成交量放大 ≥ 2x
+}
 
-    # 底背離條件
-    if (c0 < c1 or c0 < c2) and (h0 > h1 and h1 < h2) and h0 < 0:
-        return "底背離"
-    
-    # 頂背離條件
-    if (c0 > c1 or c0 > c2) and (h0 < h1 and h1 > h2) and h0 > 0:
-        return "頂背離"
+# 頂部轉勢
+TOP_PARAMS = {
+    'from_low_pct': 50,        # 距 52 週低位升 ≥ 50%
+    'consolidation_days': 30,
+    'consolidation_range': 12,
+    'volume_ratio': 2.0,
+}
 
-    return "無"
+# ==================== 市值 ====================
 
-# 2. 格式化市值數值
 def format_market_cap(market_cap):
-    if market_cap is None or np.isnan(market_cap) or market_cap <= 0:
+    if market_cap is None or market_cap <= 0:
         return "N/A", 0
     val = float(market_cap)
     if val >= 1e12:
@@ -51,52 +49,34 @@ def format_market_cap(market_cap):
     else:
         return f"${round(val, 0)}", val
 
-# 3. 穩健獲取單隻股市值 (帶三重備援)
-def get_single_market_cap(ticker_symbol, latest_price):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-    
-    # 嘗試 1: Yahoo Quote v6 API
-    try:
-        url = f"https://query2.finance.yahoo.com/v6/finance/quoteSummary/{ticker_symbol}?modules=price"
-        res = requests.get(url, headers=headers, timeout=3)
-        if res.status_code == 200:
-            mcap = res.json()['quoteSummary']['result'][0]['price'].get('marketCap', {}).get('raw')
-            if mcap and mcap > 0:
-                return mcap
-    except Exception:
-        pass
 
-    # 嘗試 2: yfinance fast_info
+def get_market_cap(ticker, price):
+    """簡化版：只用 yfinance fast_info"""
     try:
-        t = yf.Ticker(ticker_symbol)
-        mcap = t.fast_info.get('market_cap', None)
+        t = yf.Ticker(ticker)
+        info = t.fast_info
+        mcap = info.get('market_cap', None)
         if mcap and not np.isnan(mcap) and mcap > 0:
             return mcap
+        shares = info.get('shares', None)
+        if shares and shares > 0 and price > 0:
+            return shares * price
     except Exception:
         pass
-
-    # 嘗試 3: 用總股本 * 最新價格計算估算市值
-    try:
-        t = yf.Ticker(ticker_symbol)
-        shares = t.fast_info.get('shares', None)
-        if shares and shares > 0 and latest_price > 0:
-            return shares * latest_price
-    except Exception:
-        pass
-
     return None
 
-# 4. 獲取全美股上市股票名單 (過濾 ETF / 優先股 / 權證)
+
+# ==================== 全美股名單 ====================
+
 def get_all_us_stocks():
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    headers = {'User-Agent': 'Mozilla/5.0'}
     tickers = set()
 
     try:
         url = "https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/all/all_tickers.txt"
         res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
-            lines = res.text.splitlines()
-            for line in lines:
+            for line in res.text.splitlines():
                 sym = line.strip().upper()
                 if sym and sym.isalpha() and len(sym) <= 5:
                     tickers.add(sym)
@@ -105,155 +85,300 @@ def get_all_us_stocks():
         pass
 
     if not tickers:
-        try:
-            url = "https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=15000&download=true"
-            res = requests.get(url, headers=headers, timeout=15)
-            if res.status_code == 200:
-                rows = res.json().get('data', {}).get('rows', [])
-                for r in rows:
-                    sym = str(r.get('symbol', '')).strip().upper()
-                    asset_type = str(r.get('assetClass', '')).lower()
-                    if 'etf' not in asset_type and sym and sym.isalpha() and len(sym) <= 5:
-                        tickers.add(sym)
-        except Exception:
-            pass
-
-    if not tickers:
-        tickers = {
-            "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC",
-            "BABA", "PDD", "AVGO", "ORCL", "CRM", "COST", "PEP", "TMUS", "CSCO", "PLTR",
-            "ARM", "SMCI", "COIN", "MSTR", "UBER", "ABNB", "DIS", "NKE", "JPM", "BAC"
-        }
+        tickers = {"AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "INTC"}
 
     return sorted(list(tickers))
 
-# 5. 主執行邏輯
+
+# ==================== 技術指標 ====================
+
+def calculate_macd(close, fast=5, slow=26, signal=9):
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    dif = ema_fast - ema_slow
+    dea = dif.ewm(span=signal, adjust=False).mean()
+    hist = dif - dea
+    return dif, dea, hist
+
+
+def check_52w_position(df):
+    if len(df) < 252:
+        return None
+    high_52w = float(df['High'].tail(252).max())
+    low_52w = float(df['Low'].tail(252).min())
+    current = float(df['Close'].iloc[-1])
+    from_high = (current - high_52w) / high_52w * 100
+    from_low = (current - low_52w) / low_52w * 100
+    return {
+        'from_high_pct': round(from_high, 1),
+        'from_low_pct': round(from_low, 1),
+        'high_52w': round(high_52w, 2),
+        'low_52w': round(low_52w, 2),
+    }
+
+
+def check_consolidation(df, days=30):
+    """檢查最近 days 日係咪盤整"""
+    if len(df) < days + 5:
+        return None
+    recent = df.tail(days)
+    high = float(recent['High'].max())
+    low = float(recent['Low'].min())
+    if low <= 0:
+        return None
+    range_pct = (high - low) / low * 100
+    return {
+        'range_pct': round(range_pct, 1),
+        'high': round(high, 2),
+        'low': round(low, 2),
+    }
+
+
+def check_volume_breakout(df, days=30, ratio=2.0):
+    if len(df) < days + 2:
+        return None
+    vol_today = float(df['Volume'].iloc[-1])
+    vol_avg = float(df['Volume'].tail(days).mean())
+    if vol_avg <= 0:
+        return None
+    vol_ratio = vol_today / vol_avg
+    return {
+        'vol_ratio': round(min(vol_ratio, 50), 2),
+        'vol_today': vol_today,
+        'vol_avg': vol_avg,
+    }
+
+
+def has_pivot_divergence(df, direction='bottom'):
+    """
+    Pivot-to-pivot 背離
+      direction='bottom'：搵底背離
+      direction='top'：搵頂背離
+    """
+    if len(df) < 60:
+        return False
+
+    close = df['Close']
+    dif, _, _ = calculate_macd(close)
+
+    # 搵 pivot（用價格）
+    prominence = close.mean() * 2.0 / 100
+    distance = 5
+
+    if direction == 'bottom':
+        pivots, _ = find_peaks(-close.values, prominence=prominence, distance=distance)
+    else:
+        pivots, _ = find_peaks(close.values, prominence=prominence, distance=distance)
+
+    if len(pivots) < 2:
+        return False
+
+    # 最近兩個 pivot
+    p1, p2 = int(pivots[-2]), int(pivots[-1])
+
+    if direction == 'bottom':
+        # 價創新低 + 指標唔跟
+        if close.iloc[p2] < close.iloc[p1] and dif.iloc[p2] > dif.iloc[p1]:
+            return True
+    else:
+        # 價創新高 + 指標唔跟
+        if close.iloc[p2] > close.iloc[p1] and dif.iloc[p2] < dif.iloc[p1]:
+            return True
+
+    return False
+
+
+# ==================== 主篩選邏輯 ====================
+
+def screen_stock(ticker, df):
+    """篩選單一股票"""
+    if df is None or len(df) < 252:
+        return None
+
+    current = float(df['Close'].iloc[-1])
+
+    # 1. 52 週位置
+    pos = check_52w_position(df)
+    if not pos:
+        return None
+
+    # 2. 盤整檢測
+    cons = check_consolidation(df, days=30)
+    if not cons:
+        return None
+
+    # 3. 成交量
+    vol = check_volume_breakout(df, days=30, ratio=2.0)
+    if not vol:
+        return None
+
+    # 4. MACD 動能
+    dif, _, _ = calculate_macd(df['Close'])
+    dif_now = float(dif.iloc[-1])
+    dif_prev = float(dif.iloc[-2])
+
+    # 5. 判斷類型
+    result = None
+
+    # 底部轉勢
+    if (pos['from_high_pct'] <= BOTTOM_PARAMS['from_high_pct']
+        and cons['range_pct'] < BOTTOM_PARAMS['consolidation_range']
+        and vol['vol_ratio'] >= BOTTOM_PARAMS['volume_ratio']
+        and dif_now > dif_prev
+        and has_pivot_divergence(df, 'bottom')):
+        result = {
+            'type': '底部轉勢',
+            'from_high_pct': pos['from_high_pct'],
+            'from_low_pct': pos['from_low_pct'],
+            'consolidation_range': cons['range_pct'],
+            'consolidation_days': 30,
+            'vol_ratio': vol['vol_ratio'],
+            'macd_dif': round(dif_now, 4),
+        }
+
+    # 頂部轉勢
+    elif (pos['from_low_pct'] >= TOP_PARAMS['from_low_pct']
+        and cons['range_pct'] < TOP_PARAMS['consolidation_range']
+        and vol['vol_ratio'] >= TOP_PARAMS['volume_ratio']
+        and dif_now < dif_prev
+        and has_pivot_divergence(df, 'top')):
+        result = {
+            'type': '頂部轉勢',
+            'from_high_pct': pos['from_high_pct'],
+            'from_low_pct': pos['from_low_pct'],
+            'consolidation_range': cons['range_pct'],
+            'consolidation_days': 30,
+            'vol_ratio': vol['vol_ratio'],
+            'macd_dif': round(dif_now, 4),
+        }
+
+    if not result:
+        return None
+
+    result['ticker'] = ticker
+    result['price'] = round(current, 2)
+    return result
+
+
+# ==================== 主程式 ====================
+
 def process_stocks():
     tickers = get_all_us_stocks()
     total_scanned = len(tickers)
     success_count = 0
     failed_count = 0
-    
-    print(f"🚀 [階段 1/2] 開始分批下載 {total_scanned} 隻全美股日線數據 (條件：門檻 >$2.0、成交量 ≥ 20k、成交量放大 ≥ 2 倍 或 具 MACD 背離)...")
-    
+
+    print(f"🚀 [階段 1/2] 下載 {total_scanned} 隻日線數據（252 日）...")
+
     candidates = []
-    batch_size = 200
+    batch_size = 100
 
     for i in range(0, total_scanned, batch_size):
         batch = tickers[i:i + batch_size]
         try:
-            daily_data = yf.download(batch, period="60d", interval="1d", group_by='ticker', threads=True, progress=False)
+            daily_data = yf.download(batch, period="1y", interval="1d",
+                                      group_by='ticker', threads=True, progress=False)
 
             for ticker in batch:
                 try:
-                    df = daily_data[ticker].dropna(how='all') if len(batch) > 1 else daily_data.dropna(how='all')
-                    if df is None or len(df) < 30:
+                    if len(batch) > 1:
+                        if ticker not in daily_data.columns.levels[0]:
+                            failed_count += 1
+                            continue
+                        df = daily_data[ticker].dropna(how='all')
+                    else:
+                        df = daily_data.dropna(how='all')
+
+                    if df is None or len(df) < 252:
                         failed_count += 1
                         continue
-                    
+
                     latest_price = float(df['Close'].iloc[-1])
-                    # 條件 1：剔除股價低於 $2.0 的股票
                     if latest_price < 2.0:
                         success_count += 1
                         continue
 
                     vol_today = float(df['Volume'].iloc[-1])
-                    vol_5d_avg = float(df['Volume'].iloc[-6:-1].mean())
-
-                    # 條件 2：剔除單日成交量少於 20,000 股的股票
                     if vol_today < 20000:
                         success_count += 1
                         continue
 
-                    day_div = check_macd_divergence(df)
-                    vol_ratio = round(vol_today / vol_5d_avg, 2) if vol_5d_avg > 0 else 1.0
+                    result = screen_stock(ticker, df)
+                    if result:
+                        candidates.append(result)
 
-                    # 條件 3：只要有 MACD 背離，或者換手/成交量放大 2 倍以上 (vol_ratio >= 2.0)
-                    if day_div != "無" or vol_ratio >= 2.0:
-                        candidates.append({
-                            "ticker": ticker,
-                            "price": round(latest_price, 2),
-                            "dayDiv": day_div,
-                            "vol_today": vol_today,
-                            "vol_ratio": vol_ratio,
-                            "vol_5d_avg": vol_5d_avg
-                        })
                     success_count += 1
                 except Exception:
                     failed_count += 1
                     continue
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Batch {i} 失敗: {e}")
             failed_count += len(batch)
             continue
 
-        time.sleep(0.2)
+        if i % 1000 == 0:
+            print(f"  進度：{i}/{total_scanned}，候選 {len(candidates)} 隻")
+        time.sleep(0.1)
 
-    print(f"✅ 階段 1 完成！篩選出 {len(candidates)} 隻候選股票。")
+    print(f"✅ 階段 1 完成！候選 {len(candidates)} 隻")
 
-    print("🚀 [階段 2/2] 正在下載周線/月線數據並計算市值...")
-    cand_tickers = [c["ticker"] for c in candidates]
+    print("🚀 [階段 2/2] 下載市值...")
     results = []
 
-    if cand_tickers:
-        week_data = yf.download(cand_tickers, period="1y", interval="1wk", group_by='ticker', threads=True, progress=False)
-        month_data = yf.download(cand_tickers, period="3y", interval="1mo", group_by='ticker', threads=True, progress=False)
+    for c in candidates:
+        ticker = c['ticker']
+        mcap_raw = get_market_cap(ticker, c['price'])
+        mcap_str, mcap_num = format_market_cap(mcap_raw)
 
-        for item in candidates:
-            ticker = item["ticker"]
-            try:
-                df_week = week_data[ticker].dropna(how='all') if len(cand_tickers) > 1 else week_data.dropna(how='all')
-                df_month = month_data[ticker].dropna(how='all') if len(cand_tickers) > 1 else month_data.dropna(how='all')
+        futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
+        tradingview_url = f"https://www.tradingview.com/symbols/{ticker}/"
 
-                day_div = item["dayDiv"]
-                week_div = check_macd_divergence(df_week)
-                month_div = check_macd_divergence(df_month)
+        results.append({
+            'ticker': ticker,
+            'price': c['price'],
+            'marketCap': mcap_str,
+            'marketCapNum': float(mcap_num),
+            'type': c['type'],
+            'fromHighPct': c['from_high_pct'],
+            'fromLowPct': c['from_low_pct'],
+            'consolidationRange': c['consolidation_range'],
+            'consolidationDays': c['consolidation_days'],
+            'volRatio': c['vol_ratio'],
+            'macdDif': c['macd_dif'],
+            'futuUrl': futu_url,
+            'tvUrl': tradingview_url,
+        })
 
-                mcap_raw = get_single_market_cap(ticker, item["price"])
-                mcap_str, mcap_num = format_market_cap(mcap_raw)
-
-                # 黃金策略條件：任一週期底背離 + 成交量放大 ≥ 2 倍
-                has_bottom_div = (day_div == "底背離" or week_div == "底背離" or month_div == "底背離")
-                match_strategy = bool((item["vol_ratio"] >= 2.0) and has_bottom_div)
-                
-                futu_url = f"https://www.futunn.com/hk/stock/{ticker}-US"
-
-                # 成交量變幅 %：計算 (今日成交量 - 5日均量) / 5日均量 * 100
-                turnover_diff = round((item["vol_today"] - item["vol_5d_avg"]) / item["vol_5d_avg"] * 100, 1) if item["vol_5d_avg"] > 0 else 0.0
-
-                results.append({
-                    "ticker": ticker,
-                    "price": float(item["price"]),
-                    "marketCap": mcap_str,
-                    "marketCapNum": float(mcap_num),
-                    "dayDiv": day_div,
-                    "weekDiv": week_div,
-                    "monthDiv": month_div,
-                    "turnoverDiff": float(turnover_diff),
-                    "volumeRatio": float(item["vol_ratio"]),
-                    "matchStrategy": match_strategy,
-                    "futuUrl": futu_url
-                })
-            except Exception:
-                continue
+    # 排序：按類型 + 量比
+    results.sort(key=lambda x: (
+        0 if x['type'] == '底部轉勢' else 1,
+        -x['volRatio']
+    ))
 
     hkt = timezone(timedelta(hours=8))
     now_hkt = datetime.now(hkt).strftime("%Y-%m-%d %H:%M")
 
-    # 100% 精準對齊 index.html 的 JSON 結構要求
-    output_data = {
+    bottom_count = sum(1 for r in results if r['type'] == '底部轉勢')
+    top_count = sum(1 for r in results if r['type'] == '頂部轉勢')
+
+    output = {
         "stats": {
             "lastUpdated": now_hkt,
             "totalScanned": total_scanned,
             "successCount": success_count,
-            "matchedCount": len(results)
+            "bottomCount": bottom_count,
+            "topCount": top_count,
+            "matchedCount": len(results),
         },
         "stocks": results
     }
 
     with open("stocks_data.json", "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=2)
+        json.dump(output, f, ensure_ascii=False, indent=2)
 
-    print(f"🎉 成功寫入 {len(results)} 條數據至 stocks_data.json！更新時間 (HKT): {now_hkt}")
+    print(f"🎉 完成！底部 {bottom_count} 隻、頂部 {top_count} 隻")
+    print(f"   總共 {len(results)} 隻，更新時間：{now_hkt}")
+
 
 if __name__ == "__main__":
     process_stocks()
