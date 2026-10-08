@@ -1,10 +1,11 @@
 {
   "stats": {
-    "lastUpdated": "2026-10-08 18:23",
+    "lastUpdated": "2026-10-08 19:56",
     "totalScanned": 6630,
     "successCount": 0,
     "bottomCount": 0,
     "topCount": 0,
+    "divergenceCount": 0,
     "matchedCount": 0
   },
   "stocks": []
