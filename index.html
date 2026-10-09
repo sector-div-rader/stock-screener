@@ -7,141 +7,185 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .sort-icon { font-size: 0.8rem; margin-left: 4px; color: #9ca3af; }
-        .active-sort { color: #2563eb; }
+        body { background: #0F172A; }
+        .sort-icon { font-size: 0.8rem; margin-left: 4px; color: #64748B; }
+        .active-sort { color: #3B82F6; }
         .btn-filter-active {
-            background-color: #2563eb !important;
+            background-color: #3B82F6 !important;
             color: #ffffff !important;
-            border-color: #2563eb !important;
+            border-color: #3B82F6 !important;
+        }
+        .btn-filter-inactive {
+            background-color: #1E293B;
+            color: #CBD5E1;
+            border-color: #334155;
+        }
+        .btn-filter-inactive:hover {
+            background-color: #334155;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans text-gray-800">
+<body class="min-h-screen font-sans text-slate-100">
 
-    <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <!-- 頂部導航 -->
+    <nav class="bg-slate-950 text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-arrows-spin text-blue-400 text-2xl"></i>
                 <h1 class="text-xl font-bold tracking-wide">美股盤整突破轉勢掃描器</h1>
             </div>
-            <div class="text-xs md:text-sm text-gray-400 mt-2 sm:mt-0">
-                更新時間：<span id="last-updated-time" class="text-gray-200 font-mono">載入中...</span>
+            <div class="text-xs md:text-sm text-slate-400 mt-2 sm:mt-0">
+                更新時間：<span id="last-updated-time" class="text-slate-200 font-mono">載入中...</span>
             </div>
         </div>
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <span class="text-gray-500 text-xs font-semibold uppercase">掃描總數</span>
-                <div class="text-2xl font-bold text-gray-800 mt-1" id="stat-total">0</div>
+        <!-- 統計卡片 -->
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700">
+                <span class="text-slate-400 text-xs font-semibold uppercase">掃描總數</span>
+                <div class="text-2xl font-bold text-slate-100 mt-1" id="stat-total">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <span class="text-gray-500 text-xs font-semibold uppercase">成功解析</span>
-                <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-success">0</div>
+            <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700">
+                <span class="text-slate-400 text-xs font-semibold uppercase">成功解析</span>
+                <div class="text-2xl font-bold text-emerald-400 mt-1" id="stat-success">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <span class="text-gray-500 text-xs font-semibold uppercase">🟢 底部轉勢</span>
-                <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-bottom">0</div>
+            <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700">
+                <span class="text-slate-400 text-xs font-semibold uppercase">🟢 底部轉勢</span>
+                <div class="text-2xl font-bold text-emerald-400 mt-1" id="stat-bottom">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <span class="text-gray-500 text-xs font-semibold uppercase">🔴 頂部轉勢</span>
-                <div class="text-2xl font-bold text-red-600 mt-1" id="stat-top">0</div>
+            <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700">
+                <span class="text-slate-400 text-xs font-semibold uppercase">🔴 頂部轉勢</span>
+                <div class="text-2xl font-bold text-red-400 mt-1" id="stat-top">0</div>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <span class="text-gray-500 text-xs font-semibold uppercase">⭐ 有背離</span>
-                <div class="text-2xl font-bold text-amber-600 mt-1" id="stat-div">0</div>
+            <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700">
+                <span class="text-slate-400 text-xs font-semibold uppercase">⭐ 有背離</span>
+                <div class="text-2xl font-bold text-amber-400 mt-1" id="stat-div">0</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700">
+                <span class="text-slate-400 text-xs font-semibold uppercase">⚠️ 財報警告</span>
+                <div class="text-2xl font-bold text-orange-400 mt-1" id="stat-warn">0</div>
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-4">
+        <!-- 測試結果區 -->
+        <div class="bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-700">
+            <h2 class="text-lg font-bold text-slate-100 mb-4">
+                <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>測試結果（T+1 / T+3 / T+5）
+            </h2>
+            <div id="test-results" class="text-slate-400 text-sm">
+                <div class="text-center py-6">
+                    <i class="fa-solid fa-hourglass-half text-3xl mb-2 text-slate-600"></i>
+                    <p>暫時未有歷史數據</p>
+                    <p class="text-xs mt-1">需要 5-10 日累積記錄</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 行業統計 -->
+        <div id="sector-stats" class="bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-700 hidden">
+            <h2 class="text-lg font-bold text-slate-100 mb-4">
+                <i class="fa-solid fa-chart-pie text-purple-400 mr-2"></i>行業統計（Top 5）
+            </h2>
+            <div id="sector-list" class="grid grid-cols-2 md:grid-cols-5 gap-3"></div>
+        </div>
+
+        <!-- 篩選列 -->
+        <div class="bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-700 space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex flex-wrap gap-2" id="filter-btn-group">
-                    <button onclick="setFilter('all', this)" class="filter-btn btn-filter-active px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                    <button onclick="setFilter('all', this)" class="filter-btn btn-filter-active px-3 py-1.5 rounded-lg text-xs font-semibold border transition">
                         全部
                     </button>
-                    <button onclick="setFilter('bottomOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                    <button onclick="setFilter('bottomOnly', this)" class="filter-btn btn-filter-inactive px-3 py-1.5 rounded-lg text-xs font-semibold border transition">
                         🟢 底部轉勢
                     </button>
-                    <button onclick="setFilter('topOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                    <button onclick="setFilter('topOnly', this)" class="filter-btn btn-filter-inactive px-3 py-1.5 rounded-lg text-xs font-semibold border transition">
                         🔴 頂部轉勢
                     </button>
-                    <button onclick="setFilter('divOnly', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition">
+                    <button onclick="setFilter('divOnly', this)" class="filter-btn btn-filter-inactive px-3 py-1.5 rounded-lg text-xs font-semibold border transition">
                         ⭐ 僅有背離
+                    </button>
+                    <button onclick="setFilter('strongOnly', this)" class="filter-btn btn-filter-inactive px-3 py-1.5 rounded-lg text-xs font-semibold border transition">
+                        ⭐⭐⭐ 僅強訊號
                     </button>
                 </div>
 
                 <div class="flex flex-wrap gap-2 items-center">
-                    <select id="sector-filter" onchange="onSearchOrFilterChange()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <select id="sector-filter" onchange="onSearchOrFilterChange()" class="px-3 py-1.5 bg-slate-900 border border-slate-700 text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all">所有行業</option>
                     </select>
                     <div class="relative w-full sm:w-64">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
                         <input type="text" id="search-input" placeholder="搜尋代號" 
-                               class="w-full pl-9 pr-4 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               class="w-full pl-9 pr-4 py-1.5 bg-slate-900 border border-slate-700 text-slate-100 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500"
                                oninput="onSearchOrFilterChange()">
                     </div>
                 </div>
             </div>
 
-            <div class="text-xs text-gray-500 flex justify-between items-center pt-2 border-t border-gray-100">
-                <span>目前顯示：<strong id="current-count" class="text-gray-800">0</strong> 隻標的</span>
+            <div class="text-xs text-slate-400 flex justify-between items-center pt-2 border-t border-slate-700">
+                <span>目前顯示：<strong id="current-count" class="text-slate-200">0</strong> 隻標的</span>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <!-- 資料表格 -->
+        <div class="bg-slate-800 rounded-xl shadow-sm border border-slate-700 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr class="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider border-b border-gray-200 select-none">
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('ticker')">
+                        <tr class="bg-slate-900 text-slate-400 uppercase text-xs tracking-wider border-b border-slate-700 select-none">
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800" onclick="sortTable('ticker')">
                                 代號 <i id="sort-ticker" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('price')">
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 text-right" onclick="sortTable('price')">
                                 現價 <i id="sort-price" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('marketCapNum')">
-                                市值 <i id="sort-marketCapNum" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 text-center" onclick="sortTable('strengthNum')">
+                                強度 <i id="sort-strengthNum" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200" onclick="sortTable('sector')">
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800" onclick="sortTable('sector')">
                                 行業 <i id="sort-sector" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 text-center">類型</th>
                             <th class="py-3 px-4 text-center">背離</th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('from52wHigh')">
-                                距 52W 高 <i id="sort-from52wHigh" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 text-center">連續</th>
+                            <th class="py-3 px-4 text-center">財報</th>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 text-right" onclick="sortTable('fromHighPct')">
+                                距 52W 高 <i id="sort-fromHighPct" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('from52wLow')">
-                                距 52W 低 <i id="sort-from52wLow" class="fa-solid fa-sort sort-icon"></i>
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 text-right" onclick="sortTable('fromLowPct')">
+                                距 52W 低 <i id="sort-fromLowPct" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('consolidationRange')">
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 text-right" onclick="sortTable('consolidationRange')">
                                 盤整 <i id="sort-consolidationRange" class="fa-solid fa-sort sort-icon"></i>
                             </th>
-                            <th class="py-3 px-4 cursor-pointer hover:bg-gray-200 text-right" onclick="sortTable('volRatio')">
+                            <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 text-right" onclick="sortTable('volRatio')">
                                 量比 <i id="sort-volRatio" class="fa-solid fa-sort sort-icon"></i>
                             </th>
                             <th class="py-3 px-4 text-center">連結</th>
                         </tr>
                     </thead>
-                    <tbody id="stock-table-body" class="divide-y divide-gray-100 text-sm"></tbody>
+                    <tbody id="stock-table-body" class="divide-y divide-slate-700 text-sm"></tbody>
                 </table>
             </div>
 
-            <div id="no-data" class="hidden text-center py-12 text-gray-400">
+            <div id="no-data" class="hidden text-center py-12 text-slate-500">
                 <i class="fa-regular fa-folder-open text-4xl mb-3"></i>
                 <p class="text-sm">沒有找到符合條件的股票資料</p>
             </div>
 
-            <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                <div class="text-xs text-gray-500">
-                    頁次 <span id="page-num" class="font-bold">1</span> / <span id="total-pages" class="font-bold">1</span>
+            <div class="bg-slate-900 px-4 py-3 border-t border-slate-700 flex items-center justify-between">
+                <div class="text-xs text-slate-400">
+                    頁次 <span id="page-num" class="font-bold text-slate-200">1</span> / <span id="total-pages" class="font-bold text-slate-200">1</span>
                 </div>
                 <div class="flex space-x-2">
-                    <button id="prev-btn" onclick="changePage(-1)" class="px-3 py-1 bg-white border border-gray-300 text-gray-600 rounded text-xs hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button id="prev-btn" onclick="changePage(-1)" class="px-3 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded text-xs hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                         上一頁
                     </button>
-                    <button id="next-btn" onclick="changePage(1)" class="px-3 py-1 bg-white border border-gray-300 text-gray-600 rounded text-xs hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button id="next-btn" onclick="changePage(1)" class="px-3 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded text-xs hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed">
                         下一頁
                     </button>
                 </div>
@@ -153,14 +197,105 @@
     <script>
         let rawData = [];
         let filteredData = [];
+        let historyData = [];
         let currentPage = 1;
         const pageSize = 20;
 
         let activeFilter = 'all';
-        let currentSortColumn = 'volRatio';
+        let currentSortColumn = 'strengthNum';
         let currentSortOrder = 'desc';
 
-        window.addEventListener('DOMContentLoaded', fetchStockData);
+        window.addEventListener('DOMContentLoaded', async () => {
+            await fetchHistoryData();
+            await fetchStockData();
+        });
+
+        async function fetchHistoryData() {
+            try {
+                const response = await fetch('history.csv');
+                if (!response.ok) return;
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                if (lines.length < 2) return;
+
+                const headers = lines[0].split(',');
+                historyData = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    const obj = {};
+                    headers.forEach((h, i) => obj[h.trim()] = (values[i] || '').trim());
+                    return obj;
+                });
+
+                renderTestResults();
+            } catch (err) {
+                console.log('history.csv 讀取失敗:', err);
+            }
+        }
+
+        function renderTestResults() {
+            const container = document.getElementById('test-results');
+            
+            // 計算 T+1 / T+3 / T+5 統計
+            const calcStats = (field) => {
+                const valid = historyData.filter(r => r[field + '升跌%'] && r[field + '升跌%'] !== '');
+                if (valid.length === 0) return null;
+                
+                const changes = valid.map(r => parseFloat(r[field + '升跌%']));
+                const wins = changes.filter(c => c > 0).length;
+                const avg = changes.reduce((a, b) => a + b, 0) / changes.length;
+                
+                return {
+                    count: valid.length,
+                    winRate: (wins / valid.length * 100).toFixed(1),
+                    avgChange: avg.toFixed(2),
+                };
+            };
+
+            const t1 = calcStats('T+1');
+            const t3 = calcStats('T+3');
+            const t5 = calcStats('T+5');
+
+            if (!t1 && !t3 && !t5) {
+                container.innerHTML = `
+                    <div class="text-center py-6">
+                        <i class="fa-solid fa-hourglass-half text-3xl mb-2 text-slate-600"></i>
+                        <p>暫時未有歷史數據</p>
+                        <p class="text-xs mt-1">需要 5-10 日累積記錄（目前 ${historyData.length} 筆）</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const card = (label, stats) => {
+                if (!stats) {
+                    return `
+                        <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                            <div class="text-xs text-slate-500 uppercase">${label}</div>
+                            <div class="text-lg font-bold text-slate-500 mt-1">-</div>
+                            <div class="text-xs text-slate-500 mt-1">未夠數據</div>
+                        </div>
+                    `;
+                }
+                const winColor = parseFloat(stats.winRate) >= 50 ? 'text-emerald-400' : 'text-red-400';
+                const chgColor = parseFloat(stats.avgChange) >= 0 ? 'text-emerald-400' : 'text-red-400';
+                return `
+                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                        <div class="text-xs text-slate-400 uppercase">${label}</div>
+                        <div class="text-2xl font-bold ${winColor} mt-1">${stats.winRate}%</div>
+                        <div class="text-xs text-slate-500 mt-1">成功率（${stats.count} 筆）</div>
+                        <div class="text-sm font-mono ${chgColor} mt-1">平均 ${stats.avgChange > 0 ? '+' : ''}${stats.avgChange}%</div>
+                    </div>
+                `;
+            };
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    ${card('T+1', t1)}
+                    ${card('T+3', t3)}
+                    ${card('T+5', t5)}
+                </div>
+            `;
+        }
 
         async function fetchStockData() {
             try {
@@ -174,6 +309,7 @@
                 document.getElementById('stat-bottom').innerText = data.stats.bottomCount?.toLocaleString() || '0';
                 document.getElementById('stat-top').innerText = data.stats.topCount?.toLocaleString() || '0';
                 document.getElementById('stat-div').innerText = data.stats.divergenceCount?.toLocaleString() || '0';
+                document.getElementById('stat-warn').innerText = data.stats.earningsWarningCount?.toLocaleString() || '0';
 
                 rawData = data.stocks || [];
 
@@ -187,12 +323,15 @@
                     sectorSelect.appendChild(opt);
                 });
 
+                // 行業統計
+                renderSectorStats();
+
                 onSearchOrFilterChange();
             } catch (err) {
                 console.error("載入錯誤:", err);
                 document.getElementById('stock-table-body').innerHTML = `
                     <tr>
-                        <td colspan="11" class="text-center py-8 text-red-500 font-medium">
+                        <td colspan="13" class="text-center py-8 text-red-400 font-medium">
                             <i class="fa-solid fa-triangle-exclamation mr-2"></i>資料載入失敗
                         </td>
                     </tr>
@@ -200,9 +339,46 @@
             }
         }
 
+        function renderSectorStats() {
+            const counts = {};
+            rawData.forEach(s => {
+                if (s.sector) {
+                    counts[s.sector] = (counts[s.sector] || 0) + 1;
+                }
+            });
+
+            const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            if (sorted.length === 0) return;
+
+            const container = document.getElementById('sector-stats');
+            const list = document.getElementById('sector-list');
+            container.classList.remove('hidden');
+
+            const maxCount = sorted[0][1];
+            const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-red-500'];
+
+            list.innerHTML = sorted.map(([sector, count], i) => {
+                const width = (count / maxCount * 100).toFixed(0);
+                return `
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <div class="text-xs text-slate-400 truncate">${sector}</div>
+                        <div class="text-lg font-bold text-slate-100 mt-1">${count}</div>
+                        <div class="w-full bg-slate-700 rounded-full h-1.5 mt-2">
+                            <div class="${colors[i]} h-1.5 rounded-full" style="width: ${width}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
         function setFilter(filterType, element) {
             activeFilter = filterType;
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('btn-filter-active'));
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('btn-filter-active');
+                btn.classList.add('btn-filter-inactive');
+            });
+            element.classList.remove('btn-filter-inactive');
             element.classList.add('btn-filter-active');
             onSearchOrFilterChange();
         }
@@ -219,6 +395,7 @@
                 if (activeFilter === 'bottomOnly') matchesFilter = (item.type === '底部轉勢');
                 else if (activeFilter === 'topOnly') matchesFilter = (item.type === '頂部轉勢');
                 else if (activeFilter === 'divOnly') matchesFilter = (item.hasDivergence === true);
+                else if (activeFilter === 'strongOnly') matchesFilter = (item.strengthNum === 3);
 
                 return matchesSearch && matchesSector && matchesFilter;
             });
@@ -286,45 +463,69 @@
 
             tbody.innerHTML = pageData.map(stock => {
                 const typeTag = stock.type === '底部轉勢'
-                    ? `<span class="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded text-xs">🟢 底部</span>`
-                    : `<span class="bg-red-100 text-red-700 font-bold px-2 py-0.5 rounded text-xs">🔴 頂部</span>`;
+                    ? `<span class="bg-emerald-900 text-emerald-300 font-bold px-2 py-0.5 rounded text-xs">🟢 底部</span>`
+                    : `<span class="bg-red-900 text-red-300 font-bold px-2 py-0.5 rounded text-xs">🔴 頂部</span>`;
 
                 const divTag = stock.hasDivergence
-                    ? `<span class="text-amber-500 text-lg">⭐</span>`
-                    : `<span class="text-gray-300 text-xs">-</span>`;
+                    ? `<span class="text-amber-400 text-lg">⭐</span>`
+                    : `<span class="text-slate-600 text-xs">-</span>`;
 
-                const f52h = stock.from52wHigh !== null && stock.from52wHigh !== undefined
-                    ? stock.from52wHigh.toFixed(1) + '%'
+                const strengthMap = {
+                    3: '<span class="text-amber-400 text-lg">⭐⭐⭐</span>',
+                    2: '<span class="text-amber-400">⭐⭐</span>',
+                    1: '<span class="text-slate-500 text-xs">⭐</span>',
+                };
+                const strengthTag = strengthMap[stock.strengthNum] || strengthMap[1];
+
+                let consecutiveTag = '-';
+                if (stock.consecutiveCount >= 5) {
+                    consecutiveTag = `<span class="bg-red-900 text-red-300 font-bold px-2 py-0.5 rounded text-xs">🔥🔥🔥 ${stock.consecutiveCount}/7</span>`;
+                } else if (stock.consecutiveCount >= 3) {
+                    consecutiveTag = `<span class="bg-orange-900 text-orange-300 font-bold px-2 py-0.5 rounded text-xs">🔥🔥 ${stock.consecutiveCount}/7</span>`;
+                } else if (stock.consecutiveCount >= 2) {
+                    consecutiveTag = `<span class="bg-yellow-900 text-yellow-300 font-bold px-2 py-0.5 rounded text-xs">🔥 ${stock.consecutiveCount}/7</span>`;
+                } else {
+                    consecutiveTag = `<span class="text-slate-600 text-xs">-</span>`;
+                }
+
+                const warnTag = stock.earningsWarning
+                    ? `<span class="bg-orange-900 text-orange-300 font-bold px-2 py-0.5 rounded text-xs">⚠️</span>`
+                    : `<span class="text-slate-600 text-xs">-</span>`;
+
+                const f52h = (stock.fromHighPct !== null && stock.fromHighPct !== undefined)
+                    ? stock.fromHighPct.toFixed(1) + '%'
                     : '-';
-                const f52l = stock.from52wLow !== null && stock.from52wLow !== undefined
-                    ? '+' + stock.from52wLow.toFixed(1) + '%'
+                const f52l = (stock.fromLowPct !== null && stock.fromLowPct !== undefined)
+                    ? '+' + stock.fromLowPct.toFixed(1) + '%'
                     : '-';
 
-                const fromHighClass = (stock.from52wHigh !== null && stock.from52wHigh <= -30) ? 'text-red-600 font-semibold' : 'text-gray-700';
-                const fromLowClass = (stock.from52wLow !== null && stock.from52wLow >= 50) ? 'text-emerald-600 font-semibold' : 'text-gray-700';
-                const volRatioClass = stock.volRatio >= 2.0 ? 'text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded' : 'text-gray-700';
+                const fromHighClass = (stock.fromHighPct !== null && stock.fromHighPct <= -30) ? 'text-red-400 font-semibold' : 'text-slate-300';
+                const fromLowClass = (stock.fromLowPct !== null && stock.fromLowPct >= 50) ? 'text-emerald-400 font-semibold' : 'text-slate-300';
+                const volRatioClass = stock.volRatio >= 2.0 ? 'text-red-400 font-bold bg-red-950 px-2 py-0.5 rounded' : 'text-slate-300';
 
                 return `
-                    <tr class="hover:bg-blue-50/50 transition-colors">
-                        <td class="py-3.5 px-4 font-bold text-gray-900">${stock.ticker}</td>
-                        <td class="py-3.5 px-4 text-right font-mono font-medium">${stock.price.toFixed(2)}</td>
-                        <td class="py-3.5 px-4 text-right font-mono font-semibold text-gray-700">${stock.marketCap || 'N/A'}</td>
-                        <td class="py-3.5 px-4 text-xs text-gray-600">${stock.sector || '-'}</td>
+                    <tr class="hover:bg-slate-700/50 transition-colors">
+                        <td class="py-3.5 px-4 font-bold text-slate-100">${stock.ticker}</td>
+                        <td class="py-3.5 px-4 text-right font-mono font-medium text-slate-200">${stock.price.toFixed(2)}</td>
+                        <td class="py-3.5 px-4 text-center">${strengthTag}</td>
+                        <td class="py-3.5 px-4 text-xs text-slate-400">${stock.sector || '-'}</td>
                         <td class="py-3.5 px-4 text-center">${typeTag}</td>
                         <td class="py-3.5 px-4 text-center">${divTag}</td>
+                        <td class="py-3.5 px-4 text-center">${consecutiveTag}</td>
+                        <td class="py-3.5 px-4 text-center">${warnTag}</td>
                         <td class="py-3.5 px-4 text-right font-mono ${fromHighClass}">${f52h}</td>
                         <td class="py-3.5 px-4 text-right font-mono ${fromLowClass}">${f52l}</td>
-                        <td class="py-3.5 px-4 text-right font-mono text-gray-700">${stock.consolidationRange.toFixed(1)}%</td>
+                        <td class="py-3.5 px-4 text-right font-mono text-slate-300">${stock.consolidationRange.toFixed(1)}%</td>
                         <td class="py-3.5 px-4 text-right font-mono">
                             <span class="${volRatioClass}">${stock.volRatio.toFixed(2)}x</span>
                         </td>
                         <td class="py-3.5 px-4 text-center space-x-1">
                             <a href="${stock.futuUrl}" target="_blank" rel="noopener noreferrer" 
-                               class="inline-flex items-center text-xs bg-orange-500 hover:bg-orange-600 text-white font-medium px-2 py-1 rounded transition-colors">
+                               class="inline-flex items-center text-xs bg-orange-600 hover:bg-orange-700 text-white font-medium px-2 py-1 rounded transition-colors">
                                 富途
                             </a>
                             <a href="${stock.tvUrl}" target="_blank" rel="noopener noreferrer" 
-                               class="inline-flex items-center text-xs bg-blue-500 hover:bg-blue-600 text-white font-medium px-2 py-1 rounded transition-colors">
+                               class="inline-flex items-center text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium px-2 py-1 rounded transition-colors">
                                 TV
                             </a>
                         </td>
