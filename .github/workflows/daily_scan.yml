@@ -2,7 +2,6 @@ name: 自動計算美股指標
 
 on:
   schedule:
-    # 每天美股收盤後（約香港時間早上 6:00）自動執行一次
     - cron: '0 22 * * 1-5'
   workflow_dispatch:
 
@@ -28,6 +27,8 @@ jobs:
 
       - name: 執行選股策略計算
         run: python main.py
+        env:
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
 
       - name: 自動提交並更新 JSON + CSV
         run: |
