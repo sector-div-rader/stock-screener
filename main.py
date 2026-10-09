@@ -1,11 +1,8 @@
-# main.py - 美股盤整突破轉勢掃描器 V23.0
+# main.py - 美股盤整突破轉勢掃描器 V23.2
 # ============================================
-# V23.0 新功能：
-#   1. 歷史紀錄（history.csv）
-#   2. 強度評分（⭐ / ⭐⭐ / ⭐⭐⭐）
-#   3. 連續訊號（N 日內出現 M 次）
-#   4. 財報日期警告（3 日內有財報）
-#   5. 更新 T+1 / T+3 / T+5 升跌幅
+# V23.2 改動（相對 V23.0）：
+#   1. 加 Finnhub 攞 sector（唔用 Yahoo info）
+#   2. 保留 yfinance download（歷史數據）
 # ============================================
 
 import yfinance as yf
@@ -21,6 +18,10 @@ from scipy.signal import find_peaks
 
 yf.set_tz_cache_location("/tmp/yf_cache")
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
+
+# ==================== 環境變數 ====================
+
+FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY')
 
 # ==================== 參數 ====================
 
@@ -43,9 +44,9 @@ BATCH_DELAY = 0.5
 REST_EVERY = 500
 REST_DURATION = 15
 
-INFO_DELAY = 1.5
-INFO_BATCH_REST = 10
-INFO_REST_SEC = 10
+FINNHUB_DELAY = 1.1   # Finnhub 60 req/min → 1.1 秒/req
+FINNHUB_BATCH_REST = 50
+FINNHUB_REST_SEC = 5
 
 # ==================== 技術指標 ====================
 
@@ -124,11 +125,6 @@ def has_pivot_divergence(df, direction='bottom'):
 # ==================== 強度評分 ====================
 
 def get_strength(has_div, vol_ratio, cons_range):
-    """強度評分（1B）
-    ⭐⭐⭐ = 有背離 + 量比 ≥ 2.0 + 盤整 < 10%
-    ⭐⭐  = 有背離 + 量比 ≥ 1.5
-    ⭐   = 其他
-    """
     if has_div and vol_ratio >= 2.0 and cons_range < 10:
         return '⭐⭐⭐', 3
     elif has_div and vol_ratio >= 1.5:
@@ -140,7 +136,6 @@ def get_strength(has_div, vol_ratio, cons_range):
 # ==================== 連續訊號 ====================
 
 def load_history():
-    """讀取 history.csv"""
     if not os.path.exists('history.csv'):
         return pd.DataFrame()
     try:
@@ -150,10 +145,8 @@ def load_history():
 
 
 def get_consecutive_count(ticker, history_df, days=7):
-    """計 N 日內出現幾多次"""
     if history_df.empty:
         return 0
-    
     cutoff = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
     recent = history_df[
         (history_df['Ticker'] == ticker) &
@@ -164,18 +157,48 @@ def get_consecutive_count(ticker, history_df, days=7):
 
 # ==================== 財報日期 ====================
 
-def get_earnings_warning(info):
-    """如果 3 日內有財報 → 返回 True"""
-    try:
-        ts = info.get('earningsTimestamp')
-        if not ts:
-            return False
-        earnings_date = datetime.fromtimestamp(ts).date()
-        today = datetime.now().date()
-        diff = (earnings_date - today).days
-        return 0 <= diff <= 3
-    except Exception:
+def get_earnings_warning_finnhub(ticker):
+    """用 Finnhub 攞財報日期"""
+    if not FINNHUB_API_KEY:
         return False
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        future = (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d')
+        url = f"https://finnhub.io/api/v1/calendar/earnings?from={today}&to={future}&symbol={ticker}&token={FINNHUB_API_KEY}"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            earnings = data.get('earningsCalendar', [])
+            return len(earnings) > 0
+    except Exception:
+        pass
+    return False
+
+
+# ==================== Finnhub 攞 sector ====================
+
+def get_sector_finnhub(ticker):
+    """用 Finnhub 攞 sector"""
+    if not FINNHUB_API_KEY:
+        return None
+    try:
+        url = f"https://finnhub.io/api/v1/stock/profile2?symbol={ticker}&token={FINNHUB_API_KEY}"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            if data:
+                return data.get('finnhubIndustry') or data.get('gicsSector')
+    except Exception:
+        pass
+    return None
+
+
+def enrich_with_finnhub(stock):
+    """用 Finnhub 攞 sector + 財報"""
+    ticker = stock['ticker']
+    stock['sector'] = get_sector_finnhub(ticker)
+    stock['earningsWarning'] = get_earnings_warning_finnhub(ticker)
+    return stock
 
 
 # ==================== 篩選邏輯 ====================
@@ -247,36 +270,6 @@ def screen_stock(ticker, df):
     return result
 
 
-# ==================== 攞 sector + 財報 ====================
-
-def enrich_with_info(stock):
-    ticker = stock['ticker']
-    info = None
-    
-    # 嘗試 1：get_info()（新版）
-    try:
-        info = yf.Ticker(ticker).get_info()
-    except Exception as e:
-        print(f"  ⚠️ {ticker} get_info() 失敗: {e}")
-    
-    # 嘗試 2：info（舊版）
-    if not info:
-        try:
-            info = yf.Ticker(ticker).info
-        except Exception as e:
-            print(f"  ⚠️ {ticker} info 失敗: {e}")
-    
-    if info:
-        sector = info.get('sector')
-        stock['sector'] = sector if sector else None
-        stock['earningsWarning'] = get_earnings_warning(info)
-    else:
-        stock['sector'] = None
-        stock['earningsWarning'] = False
-    
-    return stock
-
-
 # ==================== 全美股名單 ====================
 
 def get_all_us_stocks():
@@ -301,10 +294,9 @@ def get_all_us_stocks():
     return sorted(list(tickers))
 
 
-# ==================== 更新歷史 T+1 / T+3 / T+5 ====================
+# ==================== 更新歷史 ====================
 
 def update_history_prices():
-    """更新 history.csv 嘅 T+1 / T+3 / T+5 收盤價"""
     if not os.path.exists('history.csv'):
         return
 
@@ -325,13 +317,11 @@ def update_history_prices():
         if days_since <= 0:
             continue
 
-        # 攞 ticker 歷史數據
         try:
             ticker_df = yf.download(ticker, period='60d', interval='1d', progress=False)
             if ticker_df is None or len(ticker_df) == 0:
                 continue
 
-            # 搵 entry_date 之後嘅數據
             ticker_df = ticker_df.reset_index()
             ticker_df['Date'] = pd.to_datetime(ticker_df['Date']).dt.date
 
@@ -341,7 +331,6 @@ def update_history_prices():
 
             entry_price = float(row['進場價'])
 
-            # T+1
             if pd.isna(row.get('T+1收盤')) or row.get('T+1收盤') == '':
                 if len(after) >= 1:
                     t1 = float(after.iloc[0]['Close'])
@@ -349,7 +338,6 @@ def update_history_prices():
                     df.at[idx, 'T+1升跌%'] = round((t1 - entry_price) / entry_price * 100, 2)
                     updated = True
 
-            # T+3
             if pd.isna(row.get('T+3收盤')) or row.get('T+3收盤') == '':
                 if len(after) >= 3:
                     t3 = float(after.iloc[2]['Close'])
@@ -357,7 +345,6 @@ def update_history_prices():
                     df.at[idx, 'T+3升跌%'] = round((t3 - entry_price) / entry_price * 100, 2)
                     updated = True
 
-            # T+5
             if pd.isna(row.get('T+5收盤')) or row.get('T+5收盤') == '':
                 if len(after) >= 5:
                     t5 = float(after.iloc[4]['Close'])
@@ -379,7 +366,6 @@ def update_history_prices():
 # ==================== 寫入歷史 ====================
 
 def save_history(results):
-    """寫入新訊號到 history.csv"""
     today = datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
     
     rows = []
@@ -422,12 +408,14 @@ def save_history(results):
 # ==================== 主程式 ====================
 
 def process_stocks():
+    if not FINNHUB_API_KEY:
+        print("⚠️ 冇 FINNHUB_API_KEY，sector 會係 null")
+
     tickers = get_all_us_stocks()
     total_scanned = len(tickers)
     success_count = 0
     failed_count = 0
 
-    # 讀歷史
     history_df = load_history()
     print(f"📚 讀 history.csv：{len(history_df)} 行")
 
@@ -471,7 +459,6 @@ def process_stocks():
                         result['tvUrl'] = f"https://www.tradingview.com/symbols/{ticker}/"
                         result['sector'] = None
                         result['earningsWarning'] = False
-                        # 連續訊號
                         result['consecutiveCount'] = get_consecutive_count(ticker, history_df, days=7)
                         results.append(result)
 
@@ -494,24 +481,21 @@ def process_stocks():
 
     print(f"✅ 階段 1 完成！候選 {len(results)} 隻")
 
-    # ===== 階段 2：攞 sector + 財報 =====
-    print(f"🚀 [階段 2/3] 用 info 攞 sector + 財報（{len(results)} 隻）...")
+    # ===== 階段 2：Finnhub 攞 sector =====
+    print(f"🚀 [階段 2/3] 用 Finnhub 攞 sector + 財報（{len(results)} 隻）...")
 
     for i, stock in enumerate(results):
-        enrich_with_info(stock)
-        time.sleep(INFO_DELAY)
-        if (i + 1) % INFO_BATCH_REST == 0:
-            print(f"      進度：{i+1}/{len(results)}，休息 {INFO_REST_SEC} 秒")
-            time.sleep(INFO_REST_SEC)
+        enrich_with_finnhub(stock)
+        time.sleep(FINNHUB_DELAY)
+        if (i + 1) % FINNHUB_BATCH_REST == 0:
+            print(f"      進度：{i+1}/{len(results)}，休息 {FINNHUB_REST_SEC} 秒")
+            time.sleep(FINNHUB_REST_SEC)
 
-    # ===== 階段 3：更新歷史 T+1/T+3/T+5 =====
+    # ===== 階段 3：更新歷史 =====
     print(f"🚀 [階段 3/3] 更新歷史紀錄（T+1/T+3/T+5）...")
     update_history_prices()
-
-    # 寫入新訊號
     save_history(results)
 
-    # 排序
     results.sort(key=lambda x: (
         -x.get('strengthNum', 0),
         0 if x.get('hasDivergence') else 1,
