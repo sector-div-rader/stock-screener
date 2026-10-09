@@ -22,7 +22,80 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 # ==================== 環境變數 ====================
 
 FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY')
+# ==================== 行業中文對照 ====================
 
+SECTOR_CN = {
+    # 金融
+    'Banking': '銀行',
+    'Financial Services': '金融服務',
+    'Financial': '金融',
+    'Financials': '金融',
+    'Insurance': '保險',
+    'Capital Markets': '資本市場',
+    'Asset Management': '資產管理',
+    
+    # 科技
+    'Technology': '科技',
+    'Information Technology': '資訊科技',
+    'Software': '軟件',
+    'Hardware': '硬件',
+    'Semiconductors': '半導體',
+    'Semiconductor': '半導體',
+    'Communication Services': '通訊服務',
+    'Telecommunication': '電訊',
+    
+    # 醫療
+    'Healthcare': '醫療',
+    'Health Care': '醫療',
+    'Biotechnology': '生物科技',
+    'Pharmaceuticals': '製藥',
+    'Medical Devices': '醫療器械',
+    
+    # 消費
+    'Consumer Cyclical': '非必需消費',
+    'Consumer Discretionary': '非必需消費',
+    'Consumer Defensive': '必需消費',
+    'Consumer Staples': '必需消費',
+    'Retail': '零售',
+    'Restaurants': '餐飲',
+    
+    # 工業
+    'Industrials': '工業',
+    'Aerospace & Defense': '航空航天與國防',
+    'Aerospace': '航空航天',
+    'Defense': '國防',
+    'Machinery': '機械',
+    'Transportation': '運輸',
+    
+    # 能源
+    'Energy': '能源',
+    'Oil & Gas': '石油天然氣',
+    'Oil Gas': '石油天然氣',
+    'Utilities': '公用事業',
+    
+    # 原材料
+    'Basic Materials': '原材料',
+    'Materials': '原材料',
+    'Chemicals': '化工',
+    'Metals & Mining': '金屬與採礦',
+    
+    # 房地產
+    'Real Estate': '房地產',
+    'REITs': '房地產信託',
+    
+    # 其他
+    'Communication': '通訊',
+    'Media': '媒體',
+    'Entertainment': '娛樂',
+    'Automotive': '汽車',
+    'Textiles': '紡織',
+    'Apparel': '服裝',
+    'Food': '食品',
+    'Beverages': '飲料',
+    'Tobacco': '煙草',
+    'Household Products': '家居用品',
+    'Personal Products': '個人護理',
+}
 # ==================== 參數 ====================
 
 BOTTOM_PARAMS = {
