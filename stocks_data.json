@@ -1,6 +1,6 @@
 {
   "stats": {
-    "lastUpdated": "2026-10-09 16:11",
+    "lastUpdated": "2026-10-09 16:31",
     "totalScanned": 6648,
     "successCount": 5873,
     "bottomCount": 34,
@@ -24,7 +24,7 @@
       "macdDif": -0.8696,
       "futuUrl": "https://www.futunn.com/hk/stock/DCOM-US",
       "tvUrl": "https://www.tradingview.com/symbols/DCOM/",
-      "sector": null,
+      "sector": "Banking",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -42,7 +42,7 @@
       "macdDif": -0.8853,
       "futuUrl": "https://www.futunn.com/hk/stock/PKE-US",
       "tvUrl": "https://www.tradingview.com/symbols/PKE/",
-      "sector": null,
+      "sector": "Aerospace & Defense",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -60,7 +60,7 @@
       "macdDif": -1.4056,
       "futuUrl": "https://www.futunn.com/hk/stock/RBA-US",
       "tvUrl": "https://www.tradingview.com/symbols/RBA/",
-      "sector": null,
+      "sector": "Commercial Services & Supplies",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -78,7 +78,7 @@
       "macdDif": 0.6442,
       "futuUrl": "https://www.futunn.com/hk/stock/RM-US",
       "tvUrl": "https://www.tradingview.com/symbols/RM/",
-      "sector": null,
+      "sector": "Financial Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -96,7 +96,7 @@
       "macdDif": 1.0482,
       "futuUrl": "https://www.futunn.com/hk/stock/SLAB-US",
       "tvUrl": "https://www.tradingview.com/symbols/SLAB/",
-      "sector": null,
+      "sector": "Semiconductors",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -114,7 +114,7 @@
       "macdDif": 0.1588,
       "futuUrl": "https://www.futunn.com/hk/stock/LILAK-US",
       "tvUrl": "https://www.tradingview.com/symbols/LILAK/",
-      "sector": null,
+      "sector": "Telecommunication",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -132,7 +132,7 @@
       "macdDif": -4.093,
       "futuUrl": "https://www.futunn.com/hk/stock/PEP-US",
       "tvUrl": "https://www.tradingview.com/symbols/PEP/",
-      "sector": null,
+      "sector": "Beverages",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -150,7 +150,7 @@
       "macdDif": 0.5659,
       "futuUrl": "https://www.futunn.com/hk/stock/TDC-US",
       "tvUrl": "https://www.tradingview.com/symbols/TDC/",
-      "sector": null,
+      "sector": "Technology",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -168,7 +168,7 @@
       "macdDif": -0.3654,
       "futuUrl": "https://www.futunn.com/hk/stock/EIC-US",
       "tvUrl": "https://www.tradingview.com/symbols/EIC/",
-      "sector": null,
+      "sector": "N/A",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -186,7 +186,7 @@
       "macdDif": -0.9879,
       "futuUrl": "https://www.futunn.com/hk/stock/AGIO-US",
       "tvUrl": "https://www.tradingview.com/symbols/AGIO/",
-      "sector": null,
+      "sector": "Biotechnology",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -204,7 +204,7 @@
       "macdDif": -0.8724,
       "futuUrl": "https://www.futunn.com/hk/stock/HR-US",
       "tvUrl": "https://www.tradingview.com/symbols/HR/",
-      "sector": null,
+      "sector": "Real Estate",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -222,7 +222,7 @@
       "macdDif": -1.2569,
       "futuUrl": "https://www.futunn.com/hk/stock/SEPN-US",
       "tvUrl": "https://www.tradingview.com/symbols/SEPN/",
-      "sector": null,
+      "sector": "Pharmaceuticals",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -240,7 +240,7 @@
       "macdDif": -9.1606,
       "futuUrl": "https://www.futunn.com/hk/stock/MCD-US",
       "tvUrl": "https://www.tradingview.com/symbols/MCD/",
-      "sector": null,
+      "sector": "Hotels, Restaurants & Leisure",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -258,7 +258,7 @@
       "macdDif": -0.6381,
       "futuUrl": "https://www.futunn.com/hk/stock/AMTM-US",
       "tvUrl": "https://www.tradingview.com/symbols/AMTM/",
-      "sector": null,
+      "sector": "Professional Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -276,7 +276,7 @@
       "macdDif": -0.6614,
       "futuUrl": "https://www.futunn.com/hk/stock/PHG-US",
       "tvUrl": "https://www.tradingview.com/symbols/PHG/",
-      "sector": null,
+      "sector": "Health Care",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -294,7 +294,7 @@
       "macdDif": -0.0424,
       "futuUrl": "https://www.futunn.com/hk/stock/FULC-US",
       "tvUrl": "https://www.tradingview.com/symbols/FULC/",
-      "sector": null,
+      "sector": "Pharmaceuticals",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -312,7 +312,7 @@
       "macdDif": -10.2648,
       "futuUrl": "https://www.futunn.com/hk/stock/HD-US",
       "tvUrl": "https://www.tradingview.com/symbols/HD/",
-      "sector": null,
+      "sector": "Retail",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -330,7 +330,7 @@
       "macdDif": 0.2614,
       "futuUrl": "https://www.futunn.com/hk/stock/RELX-US",
       "tvUrl": "https://www.tradingview.com/symbols/RELX/",
-      "sector": null,
+      "sector": "Professional Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -348,7 +348,7 @@
       "macdDif": 0.0557,
       "futuUrl": "https://www.futunn.com/hk/stock/TTGT-US",
       "tvUrl": "https://www.tradingview.com/symbols/TTGT/",
-      "sector": null,
+      "sector": "Media",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -366,7 +366,7 @@
       "macdDif": 0.0933,
       "futuUrl": "https://www.futunn.com/hk/stock/ARDT-US",
       "tvUrl": "https://www.tradingview.com/symbols/ARDT/",
-      "sector": null,
+      "sector": "Health Care",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -384,7 +384,7 @@
       "macdDif": -2.2227,
       "futuUrl": "https://www.futunn.com/hk/stock/EMN-US",
       "tvUrl": "https://www.tradingview.com/symbols/EMN/",
-      "sector": null,
+      "sector": "Chemicals",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -402,7 +402,7 @@
       "macdDif": -0.9128,
       "futuUrl": "https://www.futunn.com/hk/stock/VICI-US",
       "tvUrl": "https://www.tradingview.com/symbols/VICI/",
-      "sector": null,
+      "sector": "Real Estate",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -420,7 +420,7 @@
       "macdDif": -0.9076,
       "futuUrl": "https://www.futunn.com/hk/stock/YUMC-US",
       "tvUrl": "https://www.tradingview.com/symbols/YUMC/",
-      "sector": null,
+      "sector": "Hotels, Restaurants & Leisure",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -438,7 +438,7 @@
       "macdDif": 0.3835,
       "futuUrl": "https://www.futunn.com/hk/stock/CSV-US",
       "tvUrl": "https://www.tradingview.com/symbols/CSV/",
-      "sector": null,
+      "sector": "Diversified Consumer Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -456,7 +456,7 @@
       "macdDif": -0.5125,
       "futuUrl": "https://www.futunn.com/hk/stock/DOW-US",
       "tvUrl": "https://www.tradingview.com/symbols/DOW/",
-      "sector": null,
+      "sector": "Chemicals",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -474,7 +474,7 @@
       "macdDif": -0.121,
       "futuUrl": "https://www.futunn.com/hk/stock/SD-US",
       "tvUrl": "https://www.tradingview.com/symbols/SD/",
-      "sector": null,
+      "sector": "Energy",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -492,7 +492,7 @@
       "macdDif": -4.9876,
       "futuUrl": "https://www.futunn.com/hk/stock/IBM-US",
       "tvUrl": "https://www.tradingview.com/symbols/IBM/",
-      "sector": null,
+      "sector": "Technology",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -510,7 +510,7 @@
       "macdDif": -0.1172,
       "futuUrl": "https://www.futunn.com/hk/stock/ACI-US",
       "tvUrl": "https://www.tradingview.com/symbols/ACI/",
-      "sector": null,
+      "sector": "Retail",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -528,7 +528,7 @@
       "macdDif": 0.4389,
       "futuUrl": "https://www.futunn.com/hk/stock/MMS-US",
       "tvUrl": "https://www.tradingview.com/symbols/MMS/",
-      "sector": null,
+      "sector": "Professional Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -546,7 +546,7 @@
       "macdDif": -0.3021,
       "futuUrl": "https://www.futunn.com/hk/stock/MITT-US",
       "tvUrl": "https://www.tradingview.com/symbols/MITT/",
-      "sector": null,
+      "sector": "Real Estate",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -564,7 +564,7 @@
       "macdDif": -3.2104,
       "futuUrl": "https://www.futunn.com/hk/stock/ABT-US",
       "tvUrl": "https://www.tradingview.com/symbols/ABT/",
-      "sector": null,
+      "sector": "Health Care",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -582,7 +582,7 @@
       "macdDif": 0.0941,
       "futuUrl": "https://www.futunn.com/hk/stock/OFLX-US",
       "tvUrl": "https://www.tradingview.com/symbols/OFLX/",
-      "sector": null,
+      "sector": "Machinery",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -600,7 +600,7 @@
       "macdDif": -0.9116,
       "futuUrl": "https://www.futunn.com/hk/stock/RYN-US",
       "tvUrl": "https://www.tradingview.com/symbols/RYN/",
-      "sector": null,
+      "sector": "Real Estate",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -618,7 +618,7 @@
       "macdDif": -0.0932,
       "futuUrl": "https://www.futunn.com/hk/stock/BDN-US",
       "tvUrl": "https://www.tradingview.com/symbols/BDN/",
-      "sector": null,
+      "sector": "Real Estate",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -636,7 +636,7 @@
       "macdDif": -1.2401,
       "futuUrl": "https://www.futunn.com/hk/stock/GBCI-US",
       "tvUrl": "https://www.tradingview.com/symbols/GBCI/",
-      "sector": null,
+      "sector": "Banking",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -654,7 +654,7 @@
       "macdDif": -0.4078,
       "futuUrl": "https://www.futunn.com/hk/stock/CTSH-US",
       "tvUrl": "https://www.tradingview.com/symbols/CTSH/",
-      "sector": null,
+      "sector": "Technology",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -672,7 +672,7 @@
       "macdDif": 0.1624,
       "futuUrl": "https://www.futunn.com/hk/stock/MH-US",
       "tvUrl": "https://www.tradingview.com/symbols/MH/",
-      "sector": null,
+      "sector": "Diversified Consumer Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -690,7 +690,7 @@
       "macdDif": 0.088,
       "futuUrl": "https://www.futunn.com/hk/stock/DAAQ-US",
       "tvUrl": "https://www.tradingview.com/symbols/DAAQ/",
-      "sector": null,
+      "sector": "N/A",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -708,7 +708,7 @@
       "macdDif": -0.1279,
       "futuUrl": "https://www.futunn.com/hk/stock/TUSK-US",
       "tvUrl": "https://www.tradingview.com/symbols/TUSK/",
-      "sector": null,
+      "sector": "Energy",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -744,7 +744,7 @@
       "macdDif": 2.9776,
       "futuUrl": "https://www.futunn.com/hk/stock/HUM-US",
       "tvUrl": "https://www.tradingview.com/symbols/HUM/",
-      "sector": null,
+      "sector": "Health Care",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -762,7 +762,7 @@
       "macdDif": -0.0686,
       "futuUrl": "https://www.futunn.com/hk/stock/HIMX-US",
       "tvUrl": "https://www.tradingview.com/symbols/HIMX/",
-      "sector": null,
+      "sector": "Semiconductors",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -780,7 +780,7 @@
       "macdDif": -0.7527,
       "futuUrl": "https://www.futunn.com/hk/stock/IMAX-US",
       "tvUrl": "https://www.tradingview.com/symbols/IMAX/",
-      "sector": null,
+      "sector": "Media",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -798,7 +798,7 @@
       "macdDif": 0.136,
       "futuUrl": "https://www.futunn.com/hk/stock/TECH-US",
       "tvUrl": "https://www.tradingview.com/symbols/TECH/",
-      "sector": null,
+      "sector": "Life Sciences Tools & Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -816,7 +816,7 @@
       "macdDif": -0.5067,
       "futuUrl": "https://www.futunn.com/hk/stock/WASH-US",
       "tvUrl": "https://www.tradingview.com/symbols/WASH/",
-      "sector": null,
+      "sector": "Banking",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -834,7 +834,7 @@
       "macdDif": -3.0863,
       "futuUrl": "https://www.futunn.com/hk/stock/BELFA-US",
       "tvUrl": "https://www.tradingview.com/symbols/BELFA/",
-      "sector": null,
+      "sector": "Electrical Equipment",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -852,7 +852,7 @@
       "macdDif": -1.3429,
       "futuUrl": "https://www.futunn.com/hk/stock/IX-US",
       "tvUrl": "https://www.tradingview.com/symbols/IX/",
-      "sector": null,
+      "sector": "Financial Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -870,7 +870,7 @@
       "macdDif": 0.2493,
       "futuUrl": "https://www.futunn.com/hk/stock/VTRS-US",
       "tvUrl": "https://www.tradingview.com/symbols/VTRS/",
-      "sector": null,
+      "sector": "Pharmaceuticals",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -888,7 +888,7 @@
       "macdDif": 7.4988,
       "futuUrl": "https://www.futunn.com/hk/stock/WCC-US",
       "tvUrl": "https://www.tradingview.com/symbols/WCC/",
-      "sector": null,
+      "sector": "Trading Companies & Distributors",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -906,7 +906,7 @@
       "macdDif": -0.1324,
       "futuUrl": "https://www.futunn.com/hk/stock/HIMS-US",
       "tvUrl": "https://www.tradingview.com/symbols/HIMS/",
-      "sector": null,
+      "sector": "Health Care",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -924,7 +924,7 @@
       "macdDif": -3.3848,
       "futuUrl": "https://www.futunn.com/hk/stock/SNEX-US",
       "tvUrl": "https://www.tradingview.com/symbols/SNEX/",
-      "sector": null,
+      "sector": "Financial Services",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -942,7 +942,7 @@
       "macdDif": 1.5669,
       "futuUrl": "https://www.futunn.com/hk/stock/GIC-US",
       "tvUrl": "https://www.tradingview.com/symbols/GIC/",
-      "sector": null,
+      "sector": "Trading Companies & Distributors",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -960,7 +960,7 @@
       "macdDif": 1.0217,
       "futuUrl": "https://www.futunn.com/hk/stock/ITGR-US",
       "tvUrl": "https://www.tradingview.com/symbols/ITGR/",
-      "sector": null,
+      "sector": "Health Care",
       "earningsWarning": false,
       "consecutiveCount": 1
     }
