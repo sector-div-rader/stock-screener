@@ -1,6 +1,6 @@
 {
   "stats": {
-    "lastUpdated": "2026-10-09 17:22",
+    "lastUpdated": "2026-10-09 17:45",
     "totalScanned": 6648,
     "successCount": 5868,
     "bottomCount": 34,
@@ -60,7 +60,7 @@
       "macdDif": -1.4056,
       "futuUrl": "https://www.futunn.com/hk/stock/RBA-US",
       "tvUrl": "https://www.tradingview.com/symbols/RBA/",
-      "sector": "Commercial Services & Supplies",
+      "sector": "商業服務",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -240,7 +240,7 @@
       "macdDif": -9.1606,
       "futuUrl": "https://www.futunn.com/hk/stock/MCD-US",
       "tvUrl": "https://www.tradingview.com/symbols/MCD/",
-      "sector": "Hotels, Restaurants & Leisure",
+      "sector": "酒店餐飲休閒",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -258,7 +258,7 @@
       "macdDif": -0.6381,
       "futuUrl": "https://www.futunn.com/hk/stock/AMTM-US",
       "tvUrl": "https://www.tradingview.com/symbols/AMTM/",
-      "sector": "Professional Services",
+      "sector": "專業服務",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -330,7 +330,7 @@
       "macdDif": 0.2614,
       "futuUrl": "https://www.futunn.com/hk/stock/RELX-US",
       "tvUrl": "https://www.tradingview.com/symbols/RELX/",
-      "sector": "Professional Services",
+      "sector": "專業服務",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -420,7 +420,7 @@
       "macdDif": -0.9076,
       "futuUrl": "https://www.futunn.com/hk/stock/YUMC-US",
       "tvUrl": "https://www.tradingview.com/symbols/YUMC/",
-      "sector": "Hotels, Restaurants & Leisure",
+      "sector": "酒店餐飲休閒",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
@@ -528,7 +528,7 @@
       "macdDif": 0.4389,
       "futuUrl": "https://www.futunn.com/hk/stock/MMS-US",
       "tvUrl": "https://www.tradingview.com/symbols/MMS/",
-      "sector": "Professional Services",
+      "sector": "專業服務",
       "earningsWarning": false,
       "consecutiveCount": 1
     },
