@@ -25,6 +25,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas numpy yfinance requests scipy
 
+      - name: 診斷5
+        run: python diag5.py
 
       - name: 執行選股策略計算
         run: python main.py
