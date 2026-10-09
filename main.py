@@ -1,8 +1,8 @@
-# main.py - 美股盤整突破轉勢掃描器 V23.2
+# main.py - 美股盤整突破轉勢掃描器 V23.3
 # ============================================
-# V23.2 改動（相對 V23.0）：
-#   1. 加 Finnhub 攞 sector（唔用 Yahoo info）
-#   2. 保留 yfinance download（歷史數據）
+# V23.3 改動（相對 V23.2）：
+#   1. 加 SECTOR_CN 中文對照
+#   2. Finnhub sector 轉中文
 # ============================================
 
 import yfinance as yf
@@ -22,6 +22,7 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 # ==================== 環境變數 ====================
 
 FINNHUB_API_KEY = os.environ.get('FINNHUB_API_KEY')
+
 # ==================== 行業中文對照 ====================
 
 SECTOR_CN = {
@@ -33,7 +34,8 @@ SECTOR_CN = {
     'Insurance': '保險',
     'Capital Markets': '資本市場',
     'Asset Management': '資產管理',
-    
+    'Commercial Services & Supplies': '商業服務',
+
     # 科技
     'Technology': '科技',
     'Information Technology': '資訊科技',
@@ -43,14 +45,16 @@ SECTOR_CN = {
     'Semiconductor': '半導體',
     'Communication Services': '通訊服務',
     'Telecommunication': '電訊',
-    
+    'Telecommunications': '電訊',
+
     # 醫療
     'Healthcare': '醫療',
     'Health Care': '醫療',
     'Biotechnology': '生物科技',
     'Pharmaceuticals': '製藥',
     'Medical Devices': '醫療器械',
-    
+    'Medical': '醫療',
+
     # 消費
     'Consumer Cyclical': '非必需消費',
     'Consumer Discretionary': '非必需消費',
@@ -58,7 +62,10 @@ SECTOR_CN = {
     'Consumer Staples': '必需消費',
     'Retail': '零售',
     'Restaurants': '餐飲',
-    
+    'Hotels, Restaurants & Leisure': '酒店餐飲休閒',
+    'Beverages': '飲料',
+    'Food': '食品',
+
     # 工業
     'Industrials': '工業',
     'Aerospace & Defense': '航空航天與國防',
@@ -66,36 +73,31 @@ SECTOR_CN = {
     'Defense': '國防',
     'Machinery': '機械',
     'Transportation': '運輸',
-    
+    'Professional Services': '專業服務',
+
     # 能源
     'Energy': '能源',
     'Oil & Gas': '石油天然氣',
     'Oil Gas': '石油天然氣',
     'Utilities': '公用事業',
-    
+
     # 原材料
     'Basic Materials': '原材料',
     'Materials': '原材料',
     'Chemicals': '化工',
     'Metals & Mining': '金屬與採礦',
-    
+
     # 房地產
     'Real Estate': '房地產',
     'REITs': '房地產信託',
-    
+
     # 其他
     'Communication': '通訊',
     'Media': '媒體',
     'Entertainment': '娛樂',
     'Automotive': '汽車',
-    'Textiles': '紡織',
-    'Apparel': '服裝',
-    'Food': '食品',
-    'Beverages': '飲料',
-    'Tobacco': '煙草',
-    'Household Products': '家居用品',
-    'Personal Products': '個人護理',
 }
+
 # ==================== 參數 ====================
 
 BOTTOM_PARAMS = {
@@ -117,7 +119,7 @@ BATCH_DELAY = 0.5
 REST_EVERY = 500
 REST_DURATION = 15
 
-FINNHUB_DELAY = 1.1   # Finnhub 60 req/min → 1.1 秒/req
+FINNHUB_DELAY = 1.1
 FINNHUB_BATCH_REST = 50
 FINNHUB_REST_SEC = 5
 
@@ -231,7 +233,6 @@ def get_consecutive_count(ticker, history_df, days=7):
 # ==================== 財報日期 ====================
 
 def get_earnings_warning_finnhub(ticker):
-    """用 Finnhub 攞財報日期"""
     if not FINNHUB_API_KEY:
         return False
     try:
@@ -248,7 +249,7 @@ def get_earnings_warning_finnhub(ticker):
     return False
 
 
-# ==================== Finnhub 攞 sector ====================
+# ==================== Finnhub 攞 sector（轉中文）====================
 
 def get_sector_finnhub(ticker):
     """用 Finnhub 攞 sector（轉中文）"""
@@ -270,7 +271,6 @@ def get_sector_finnhub(ticker):
 
 
 def enrich_with_finnhub(stock):
-    """用 Finnhub 攞 sector + 財報"""
     ticker = stock['ticker']
     stock['sector'] = get_sector_finnhub(ticker)
     stock['earningsWarning'] = get_earnings_warning_finnhub(ticker)
@@ -557,7 +557,7 @@ def process_stocks():
 
     print(f"✅ 階段 1 完成！候選 {len(results)} 隻")
 
-    # ===== 階段 2：Finnhub 攞 sector =====
+    # ===== 階段 2：Finnhub =====
     print(f"🚀 [階段 2/3] 用 Finnhub 攞 sector + 財報（{len(results)} 隻）...")
 
     for i, stock in enumerate(results):
@@ -567,7 +567,7 @@ def process_stocks():
             print(f"      進度：{i+1}/{len(results)}，休息 {FINNHUB_REST_SEC} 秒")
             time.sleep(FINNHUB_REST_SEC)
 
-    # ===== 階段 3：更新歷史 =====
+    # ===== 階段 3 =====
     print(f"🚀 [階段 3/3] 更新歷史紀錄（T+1/T+3/T+5）...")
     update_history_prices()
     save_history(results)
