@@ -251,7 +251,7 @@ def get_earnings_warning_finnhub(ticker):
 # ==================== Finnhub 攞 sector ====================
 
 def get_sector_finnhub(ticker):
-    """用 Finnhub 攞 sector"""
+    """用 Finnhub 攞 sector（轉中文）"""
     if not FINNHUB_API_KEY:
         return None
     try:
@@ -260,7 +260,10 @@ def get_sector_finnhub(ticker):
         if r.status_code == 200:
             data = r.json()
             if data:
-                return data.get('finnhubIndustry') or data.get('gicsSector')
+                sector_en = data.get('finnhubIndustry') or data.get('gicsSector')
+                if sector_en:
+                    # 轉中文
+                    return SECTOR_CN.get(sector_en, sector_en)
     except Exception:
         pass
     return None
