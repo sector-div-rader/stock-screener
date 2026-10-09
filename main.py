@@ -251,14 +251,29 @@ def screen_stock(ticker, df):
 
 def enrich_with_info(stock):
     ticker = stock['ticker']
+    info = None
+    
+    # 嘗試 1：get_info()（新版）
     try:
-        info = yf.Ticker(ticker).info
+        info = yf.Ticker(ticker).get_info()
+    except Exception as e:
+        print(f"  ⚠️ {ticker} get_info() 失敗: {e}")
+    
+    # 嘗試 2：info（舊版）
+    if not info:
+        try:
+            info = yf.Ticker(ticker).info
+        except Exception as e:
+            print(f"  ⚠️ {ticker} info 失敗: {e}")
+    
+    if info:
         sector = info.get('sector')
         stock['sector'] = sector if sector else None
         stock['earningsWarning'] = get_earnings_warning(info)
-    except Exception:
+    else:
         stock['sector'] = None
         stock['earningsWarning'] = False
+    
     return stock
 
 
