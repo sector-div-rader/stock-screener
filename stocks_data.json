@@ -1,6 +1,6 @@
 {
   "stats": {
-    "lastUpdated": "2026-10-09 15:31",
+    "lastUpdated": "2026-10-09 15:55",
     "totalScanned": 6648,
     "successCount": 5873,
     "bottomCount": 34,
@@ -26,7 +26,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/DCOM/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "PKE",
@@ -44,7 +44,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/PKE/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "RBA",
@@ -62,7 +62,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/RBA/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "RM",
@@ -80,7 +80,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/RM/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "SLAB",
@@ -98,7 +98,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/SLAB/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "LILAK",
@@ -116,7 +116,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/LILAK/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "PEP",
@@ -134,7 +134,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/PEP/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "TDC",
@@ -152,7 +152,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/TDC/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "EIC",
@@ -170,7 +170,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/EIC/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "AGIO",
@@ -188,7 +188,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/AGIO/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "HR",
@@ -206,7 +206,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/HR/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "SEPN",
@@ -224,7 +224,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/SEPN/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "MCD",
@@ -242,7 +242,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/MCD/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "AMTM",
@@ -260,7 +260,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/AMTM/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "PHG",
@@ -278,7 +278,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/PHG/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "FULC",
@@ -296,7 +296,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/FULC/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "HD",
@@ -314,7 +314,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/HD/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "RELX",
@@ -332,7 +332,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/RELX/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "TTGT",
@@ -350,7 +350,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/TTGT/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "ARDT",
@@ -368,7 +368,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/ARDT/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "EMN",
@@ -386,7 +386,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/EMN/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "VICI",
@@ -404,7 +404,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/VICI/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "YUMC",
@@ -422,7 +422,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/YUMC/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "CSV",
@@ -440,7 +440,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/CSV/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "DOW",
@@ -458,7 +458,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/DOW/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "SD",
@@ -476,7 +476,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/SD/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "IBM",
@@ -494,7 +494,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/IBM/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "ACI",
@@ -512,7 +512,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/ACI/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "MMS",
@@ -530,7 +530,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/MMS/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "MITT",
@@ -548,7 +548,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/MITT/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "ABT",
@@ -566,7 +566,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/ABT/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "OFLX",
@@ -584,7 +584,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/OFLX/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "RYN",
@@ -602,7 +602,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/RYN/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "BDN",
@@ -620,7 +620,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/BDN/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "GBCI",
@@ -638,7 +638,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/GBCI/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "CTSH",
@@ -656,7 +656,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/CTSH/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "MH",
@@ -674,7 +674,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/MH/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "DAAQ",
@@ -692,7 +692,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/DAAQ/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "TUSK",
@@ -710,7 +710,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/TUSK/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "WCCB",
@@ -728,7 +728,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/WCCB/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "HUM",
@@ -746,7 +746,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/HUM/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "HIMX",
@@ -764,7 +764,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/HIMX/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "IMAX",
@@ -782,7 +782,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/IMAX/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "TECH",
@@ -800,7 +800,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/TECH/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "WASH",
@@ -818,7 +818,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/WASH/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "BELFA",
@@ -836,7 +836,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/BELFA/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "IX",
@@ -854,7 +854,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/IX/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "VTRS",
@@ -872,7 +872,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/VTRS/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "WCC",
@@ -890,7 +890,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/WCC/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "HIMS",
@@ -908,7 +908,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/HIMS/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "SNEX",
@@ -926,7 +926,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/SNEX/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "GIC",
@@ -944,7 +944,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/GIC/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     },
     {
       "ticker": "ITGR",
@@ -962,7 +962,7 @@
       "tvUrl": "https://www.tradingview.com/symbols/ITGR/",
       "sector": null,
       "earningsWarning": false,
-      "consecutiveCount": 0
+      "consecutiveCount": 1
     }
   ]
 }
